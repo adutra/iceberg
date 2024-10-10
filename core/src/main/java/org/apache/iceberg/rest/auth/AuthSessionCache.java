@@ -35,8 +35,8 @@ public class AuthSessionCache implements AutoCloseable {
   }
 
   @SuppressWarnings("unchecked")
-  public <T extends AuthSession> T cachedSession(String key, Supplier<T> loadingFunc) {
-    return (T) sessionCache().get(key, k -> loadingFunc.get());
+  public <T extends AuthSession> T cachedSession(String key, Supplier<T> loader) {
+    return (T) sessionCache().get(key, k -> loader.get());
   }
 
   @Override
