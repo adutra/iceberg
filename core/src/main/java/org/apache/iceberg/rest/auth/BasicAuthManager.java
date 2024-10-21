@@ -29,7 +29,7 @@ public final class BasicAuthManager implements AuthManager {
   private String header;
 
   @Override
-  public void initialize(String owner, RESTClient client, Map<String, String> properties) {
+  public void initialize(String name, RESTClient client, Map<String, String> properties) {
     Preconditions.checkArgument(
         properties.containsKey(AuthProperties.BASIC_USERNAME),
         "Property %s is required",

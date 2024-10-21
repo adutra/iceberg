@@ -33,8 +33,8 @@ import org.apache.iceberg.rest.RESTClient;
 public interface AuthManager extends AutoCloseable {
 
   /**
-   * Initializes the manager with the owner of the catalog, the REST client, and the properties
-   * provided in the catalog configuration.
+   * Initializes the manager with a distinctive name, the REST client, and the properties provided
+   * in the catalog configuration.
    *
    * <p>This method is intended to be called many times, typically once before contacting the config
    * endpoint, and once after contacting the config endpoint. The properties provided in the catalog
@@ -43,7 +43,7 @@ public interface AuthManager extends AutoCloseable {
    *
    * <p>This method cannot return null.
    */
-  void initialize(String owner, RESTClient client, Map<String, String> properties);
+  void initialize(String name, RESTClient client, Map<String, String> properties);
 
   /**
    * Returns a session for the whole catalog.

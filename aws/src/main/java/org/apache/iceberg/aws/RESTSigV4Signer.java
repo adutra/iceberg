@@ -67,7 +67,7 @@ public class RESTSigV4Signer implements AuthManager, AuthSession {
   }
 
   @Override
-  public void initialize(String owner, RESTClient client, Map<String, String> properties) {
+  public void initialize(String name, RESTClient client, Map<String, String> properties) {
     initialize(properties);
   }
 

@@ -60,12 +60,12 @@ public class OAuth2Manager extends RefreshingAuthManager {
   private AuthSessionCache sessionCache;
 
   @Override
-  public void initialize(String owner, RESTClient restClient, Map<String, String> props) {
+  public void initialize(String name, RESTClient restClient, Map<String, String> props) {
     this.client = restClient;
     this.properties = props;
     this.config = createConfig(props);
     this.sessionCache = new AuthSessionCache(sessionTimeout(props));
-    setExecutorNamePrefix(owner + "-token-refresh");
+    setExecutorNamePrefix(name + "-token-refresh");
     setKeepRefreshed(config.keepRefreshed());
     // keep track of the start time for token refresh
     this.startTimeMillis = System.currentTimeMillis();
