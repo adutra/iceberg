@@ -37,6 +37,10 @@ public interface RESTClient extends Closeable {
 
   void head(String path, Map<String, String> headers, Consumer<ErrorResponse> errorHandler);
 
+  // Note: this method was added when AuthSession was introduced. It's a default method to
+  // maintain backward compatibility with older implementations, and the method body in this class
+  // ignores the AuthSession. New implementations MUST override this method and use the provided
+  // AuthSession to authenticate the request.
   default void head(
       String path,
       Map<String, String> headers,
@@ -68,11 +72,15 @@ public interface RESTClient extends Closeable {
       Map<String, String> headers,
       Consumer<ErrorResponse> errorHandler);
 
+  // Note: this method was added when AuthSession was introduced. It's a default method to
+  // maintain backward compatibility with older implementations, and the method body in this class
+  // ignores the AuthSession. New implementations MUST override this method and use the provided
+  // AuthSession to authenticate the request.
   default <T extends RESTResponse> T delete(
       String path,
       Class<T> responseType,
       Map<String, String> headers,
-      AuthSession session,
+      AuthSession authSession,
       Consumer<ErrorResponse> errorHandler) {
     return delete(path, responseType, headers, errorHandler);
   }
@@ -84,12 +92,7 @@ public interface RESTClient extends Closeable {
       Map<String, String> headers,
       Consumer<ErrorResponse> errorHandler) {
     return delete(
-        path,
-        queryParams,
-        responseType,
-        ImmutableMap.of(),
-        DefaultAuthSession.of(headers),
-        errorHandler);
+        path, queryParams, responseType, headers, DefaultAuthSession.empty(), errorHandler);
   }
 
   default <T extends RESTResponse> T delete(
@@ -147,6 +150,10 @@ public interface RESTClient extends Closeable {
       Map<String, String> headers,
       Consumer<ErrorResponse> errorHandler);
 
+  // Note: this method was added when AuthSession was introduced. It's a default method to
+  // maintain backward compatibility with older implementations, and the method body in this class
+  // ignores the AuthSession. New implementations MUST override this method and use the provided
+  // AuthSession to authenticate the request.
   default <T extends RESTResponse> T get(
       String path,
       Map<String, String> queryParams,
@@ -188,7 +195,7 @@ public interface RESTClient extends Closeable {
         body,
         responseType,
         headers,
-        DefaultAuthSession.of(headers),
+        DefaultAuthSession.empty(),
         errorHandler,
         responseHeaders);
   }
@@ -215,6 +222,10 @@ public interface RESTClient extends Closeable {
       Map<String, String> headers,
       Consumer<ErrorResponse> errorHandler);
 
+  // Note: this method was added when AuthSession was introduced. It's a default method to
+  // maintain backward compatibility with older implementations, and the method body in this class
+  // ignores the AuthSession. New implementations MUST override this method and use the provided
+  // AuthSession to authenticate the request.
   default <T extends RESTResponse> T post(
       String path,
       RESTRequest body,
@@ -241,6 +252,10 @@ public interface RESTClient extends Closeable {
       Map<String, String> headers,
       Consumer<ErrorResponse> errorHandler);
 
+  // Note: this method was added when AuthSession was introduced. It's a default method to
+  // maintain backward compatibility with older implementations, and the method body in this class
+  // ignores the AuthSession. New implementations MUST override this method and use the provided
+  // AuthSession to authenticate the request.
   default <T extends RESTResponse> T postForm(
       String path,
       Map<String, String> formData,

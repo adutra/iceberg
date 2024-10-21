@@ -51,43 +51,59 @@ public class OAuth2Manager extends RefreshingAuthManager {
           .addAll(TOKEN_PREFERENCE_ORDER)
           .build();
 
+  private final long startTimeMillis;
+
   private RESTClient client;
-  private AuthConfig config;
-  private long startTimeMillis;
   private OAuthTokenResponse authResponse;
   private AuthSessionCache sessionCache;
 
-  @Override
-  public void initialize(String name, RESTClient restClient, Map<String, String> props) {
-    this.client = restClient;
-    this.config = createConfig(props);
-    this.sessionCache = new AuthSessionCache(sessionTimeout(props));
-    setExecutorNamePrefix(name + "-token-refresh");
-    setKeepRefreshed(config.keepRefreshed());
+  public OAuth2Manager() {
     // keep track of the start time for token refresh
     this.startTimeMillis = System.currentTimeMillis();
   }
 
   @Override
-  public AuthSession catalogSession() {
+  public void setName(String name) {
+    setExecutorNamePrefix(name + "-token-refresh");
+  }
+
+  @Override
+  public AuthSession preConfigSession(RESTClient initClient, Map<String, String> props) {
+    AuthConfig config = createConfig(props);
     OAuth2Util.AuthSession session =
         new OAuth2Util.AuthSession(OAuth2Util.authHeaders(config.token()), config);
-    if (config.credential() != null && authResponse == null) {
+    if (config.credential() != null) {
       this.authResponse =
           OAuth2Util.fetchToken(
-              client,
+              initClient,
               session,
               config.credential(),
               config.scope(),
               config.oauth2ServerUri(),
               config.optionalOAuthParams());
-    }
-    if (authResponse != null) {
       return OAuth2Util.AuthSession.fromTokenResponse(
-          client, refreshExecutor(), authResponse, startTimeMillis, session);
+          initClient, null, authResponse, startTimeMillis, session);
     } else if (config.token() != null) {
       return OAuth2Util.AuthSession.fromAccessToken(
-          client, refreshExecutor(), config.token(), config.expiresAtMillis(), session);
+          initClient, null, config.token(), config.expiresAtMillis(), session);
+    }
+    return session;
+  }
+
+  @Override
+  public AuthSession catalogSession(RESTClient restClient, Map<String, String> props) {
+    this.client = restClient;
+    this.sessionCache = new AuthSessionCache(sessionTimeout(props));
+    AuthConfig config = createConfig(props);
+    setKeepRefreshed(config.keepRefreshed());
+    OAuth2Util.AuthSession session =
+        new OAuth2Util.AuthSession(OAuth2Util.authHeaders(config.token()), config);
+    if (authResponse != null) {
+      return OAuth2Util.AuthSession.fromTokenResponse(
+          this.client, refreshExecutor(), authResponse, startTimeMillis, session);
+    } else if (config.token() != null) {
+      return OAuth2Util.AuthSession.fromAccessToken(
+          this.client, refreshExecutor(), config.token(), config.expiresAtMillis(), session);
     }
     return session;
   }

@@ -34,7 +34,7 @@ public class AuthManagers {
 
   private AuthManagers() {}
 
-  public static AuthManager loadAuthManager(Map<String, String> properties) {
+  public static AuthManager loadAuthManager(String name, Map<String, String> properties) {
 
     String authType;
     if (properties.containsKey(SIGV4_ENABLED)) {
@@ -100,6 +100,7 @@ public class AuthManagers {
           e);
     }
 
+    authManager.setName(name);
     return authManager;
   }
 }

@@ -201,14 +201,12 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
           OAuth2Properties.OAUTH2_SERVER_URI);
     }
 
-    this.authManager = AuthManagers.loadAuthManager(props);
+    this.authManager = AuthManagers.loadAuthManager(name, props);
 
     ConfigResponse config;
-    try (RESTClient initClient = clientBuilder.apply(props)) {
-      authManager.initialize(name, initClient, props);
-      try (AuthSession preConfigSession = authManager.catalogSession()) {
-        config = fetchConfig(initClient, preConfigSession, props);
-      }
+    try (RESTClient initClient = clientBuilder.apply(props);
+        AuthSession initSession = authManager.preConfigSession(initClient, props)) {
+      config = fetchConfig(initClient, initSession, props);
     } catch (IOException e) {
       throw new UncheckedIOException("Failed to close HTTP client", e);
     }
@@ -232,8 +230,7 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
     this.client = clientBuilder.apply(mergedProps);
     this.paths = ResourcePaths.forCatalogProperties(mergedProps);
 
-    authManager.initialize(name, client, mergedProps);
-    this.catalogAuth = authManager.catalogSession();
+    this.catalogAuth = authManager.catalogSession(client, mergedProps);
 
     this.pageSize = PropertyUtil.propertyAsNullableInt(mergedProps, REST_PAGE_SIZE);
     if (pageSize != null) {

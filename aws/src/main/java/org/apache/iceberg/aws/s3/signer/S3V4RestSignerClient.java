@@ -38,6 +38,7 @@ import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.AuthManager;
 import org.apache.iceberg.rest.auth.AuthManagers;
+import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
@@ -98,15 +99,7 @@ public abstract class S3V4RestSignerClient
     if (null == authManager) {
       synchronized (S3V4RestSignerClient.class) {
         if (null == authManager) {
-          Map<String, String> properties =
-              ImmutableMap.<String, String>builder()
-                  .putAll(properties())
-                  // FIXME this is OAuth-specific; find a better way to overwrite the OAuth scope,
-                  // maybe a different property
-                  .put(OAuth2Properties.SCOPE, SCOPE)
-                  .buildKeepingLast();
-          authManager = AuthManagers.loadAuthManager(properties);
-          authManager.initialize("s3-signer", httpClient(), properties);
+          authManager = AuthManagers.loadAuthManager("s3-signer", properties());
         }
       }
     }
@@ -195,6 +188,14 @@ public abstract class S3V4RestSignerClient
     } else {
       Map<String, String> responseHeaders = Maps.newHashMap();
       Consumer<Map<String, String>> responseHeadersConsumer = responseHeaders::putAll;
+      Map<String, String> properties =
+          ImmutableMap.<String, String>builder()
+              .putAll(properties())
+              // FIXME this is OAuth-specific; find a better way to overwrite the OAuth scope,
+              // maybe a different property
+              .put(OAuth2Properties.SCOPE, SCOPE)
+              .buildKeepingLast();
+      AuthSession authSession = authManager().catalogSession(httpClient(), properties);
       S3SignResponse s3SignResponse =
           httpClient()
               .post(
@@ -202,7 +203,7 @@ public abstract class S3V4RestSignerClient
                   remoteSigningRequest,
                   S3SignResponse.class,
                   ImmutableMap.of(),
-                  authManager().catalogSession(),
+                  authSession,
                   ErrorHandlers.defaultErrorHandler(),
                   responseHeadersConsumer);
 

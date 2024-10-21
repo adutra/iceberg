@@ -794,14 +794,14 @@ public class OAuth2Util {
         issuedTokenType = OAuth2Properties.ACCESS_TOKEN_TYPE;
       }
       Map<String, String> headers = RESTUtil.merge(parent.headers(), authHeaders(response.token()));
-      AuthConfig config1 =
+      AuthConfig config =
           AuthConfig.builder()
               .from(parent.config())
               .token(response.token())
               .tokenType(issuedTokenType)
               .credential(credential)
               .build();
-      AuthSession session = new AuthSession(headers, config1);
+      AuthSession session = new AuthSession(headers, config);
 
       Long expiresAtMillis = session.expiresAtMillis();
       if (null == expiresAtMillis && response.expiresInSeconds() != null) {

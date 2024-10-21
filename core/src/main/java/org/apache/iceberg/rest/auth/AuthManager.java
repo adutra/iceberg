@@ -32,28 +32,35 @@ import org.apache.iceberg.rest.RESTClient;
  */
 public interface AuthManager extends AutoCloseable {
 
+  /** Sets a distinctive name for this manager. This is usually the owning catalog's name. */
+  default void setName(String name) {
+    // Do nothing
+  }
+
   /**
-   * Initializes the manager with a distinctive name, the REST client, and the properties provided
-   * in the catalog configuration.
+   * Returns a temporary session to use for contacting the configuration endpoint only. Note that
+   * the returned session will be closed after the configuration endpoint is contacted, and should
+   * not be cached.
    *
-   * <p>This method is intended to be called many times, typically once before contacting the config
-   * endpoint, and once after contacting the config endpoint. The properties provided in the catalog
-   * configuration are passed in the first call, and the properties returned by the config endpoint
-   * are passed in the second call, merged with the catalog ones.
+   * <p>The provided REST client should only be used to contact the configuration endpoint; it
+   * should be discarded after that.
    *
-   * <p>This method cannot return null.
+   * <p>This method cannot return null. By default, it returns the catalog session.
    */
-  void initialize(String name, RESTClient client, Map<String, String> properties);
+  default AuthSession preConfigSession(RESTClient initClient, Map<String, String> properties) {
+    return catalogSession(initClient, properties);
+  }
 
   /**
    * Returns a session for the whole catalog.
    *
-   * <p>This method is intended to be called many times, typically once before contacting the config
-   * endpoint, and once after contacting the config endpoint.
+   * <p>The provided REST client is the definitive client to use for contacting the token endpoint
+   * from now on. It is safe to cache this client and reuse it for all subsequent requests to the
+   * authorization server.
    *
    * <p>This method cannot return null.
    */
-  AuthSession catalogSession();
+  AuthSession catalogSession(RESTClient client, Map<String, String> properties);
 
   /**
    * Returns a session for a specific context.

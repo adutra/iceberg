@@ -26,10 +26,8 @@ import org.apache.iceberg.rest.RESTClient;
 
 public final class BasicAuthManager implements AuthManager {
 
-  private String header;
-
   @Override
-  public void initialize(String name, RESTClient client, Map<String, String> properties) {
+  public AuthSession catalogSession(RESTClient client, Map<String, String> properties) {
     Preconditions.checkArgument(
         properties.containsKey(AuthProperties.BASIC_USERNAME),
         "Property %s is required",
@@ -41,17 +39,8 @@ public final class BasicAuthManager implements AuthManager {
     String username = properties.get(AuthProperties.BASIC_USERNAME);
     String password = properties.get(AuthProperties.BASIC_PASSWORD);
     String credentials = username + ":" + password;
-    header =
+    String header =
         "Basic " + Base64.getEncoder().encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-  }
-
-  @Override
-  public AuthSession catalogSession() {
     return DefaultAuthSession.of("Authorization", header);
-  }
-
-  @Override
-  public void close() {
-    header = null;
   }
 }
