@@ -406,11 +406,9 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
     }
 
     TableIdentifier finalIdentifier = loadedIdent;
-    AuthSession session =
-        tableSession(
-            finalIdentifier,
-            response.config(),
-            authManager.contextualSession(context, catalogAuth));
+    Map<String, String> tableConf = response.config();
+    AuthSession parent = authManager.contextualSession(context, catalogAuth);
+    AuthSession session = authManager.tableSession(finalIdentifier, tableConf, parent);
     TableMetadata tableMetadata;
 
     if (snapshotMode == SnapshotMode.REFS) {
@@ -504,7 +502,8 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
             contextualSession,
             ErrorHandlers.tableErrorHandler());
 
-    AuthSession session = tableSession(ident, response.config(), contextualSession);
+    Map<String, String> tableConf = response.config();
+    AuthSession session = authManager.tableSession(ident, tableConf, contextualSession);
     RESTTableOperations ops =
         new RESTTableOperations(
             client,
@@ -704,7 +703,8 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
               contextualSession,
               ErrorHandlers.tableErrorHandler());
 
-      AuthSession session = tableSession(ident, response.config(), contextualSession);
+      Map<String, String> tableConf = response.config();
+      AuthSession session = authManager.tableSession(ident, tableConf, contextualSession);
       RESTTableOperations ops =
           new RESTTableOperations(
               client,
@@ -726,9 +726,9 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
       LoadTableResponse response = stageCreate();
       String fullName = fullTableName(ident);
 
-      AuthSession session =
-          tableSession(
-              ident, response.config(), authManager.contextualSession(context, catalogAuth));
+      Map<String, String> tableConf = response.config();
+      AuthSession parent = authManager.contextualSession(context, catalogAuth);
+      AuthSession session = authManager.tableSession(ident, tableConf, parent);
       TableMetadata meta = response.tableMetadata();
 
       RESTTableOperations ops =
@@ -758,9 +758,9 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
       LoadTableResponse response = loadInternal(context, ident, snapshotMode);
       String fullName = fullTableName(ident);
 
-      AuthSession session =
-          tableSession(
-              ident, response.config(), authManager.contextualSession(context, catalogAuth));
+      Map<String, String> tableConf = response.config();
+      AuthSession parent = authManager.contextualSession(context, catalogAuth);
+      AuthSession session = authManager.tableSession(ident, tableConf, parent);
       TableMetadata base = response.tableMetadata();
 
       Map<String, String> tableProperties = propertiesBuilder.build();
@@ -910,11 +910,6 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
     return newFileIO(context, fullConf);
   }
 
-  private AuthSession tableSession(
-      TableIdentifier id, Map<String, String> tableConf, AuthSession parent) {
-    return authManager.tableSession(id, tableConf, parent);
-  }
-
   private static ConfigResponse fetchConfig(
       RESTClient client, AuthSession initialAuth, Map<String, String> properties) {
     // send the client's warehouse location to the service to keep in sync
@@ -1029,7 +1024,8 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
             contextualSession,
             ErrorHandlers.viewErrorHandler());
 
-    AuthSession session = tableSession(identifier, response.config(), contextualSession);
+    Map<String, String> tableConf = response.config();
+    AuthSession session = authManager.tableSession(identifier, tableConf, contextualSession);
     ViewMetadata metadata = response.metadata();
 
     RESTViewOperations ops =
@@ -1177,7 +1173,8 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
               contextualSession,
               ErrorHandlers.viewErrorHandler());
 
-      AuthSession session = tableSession(identifier, response.config(), contextualSession);
+      Map<String, String> tableConf = response.config();
+      AuthSession session = authManager.tableSession(identifier, tableConf, contextualSession);
       RESTViewOperations ops =
           new RESTViewOperations(
               client, paths.view(identifier), session, response.metadata(), endpoints);
@@ -1258,9 +1255,9 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
 
       ViewMetadata replacement = builder.build();
 
-      AuthSession session =
-          tableSession(
-              identifier, response.config(), authManager.contextualSession(context, catalogAuth));
+      Map<String, String> tableConf = response.config();
+      AuthSession parent = authManager.contextualSession(context, catalogAuth);
+      AuthSession session = authManager.tableSession(identifier, tableConf, parent);
       RESTViewOperations ops =
           new RESTViewOperations(client, paths.view(identifier), session, metadata, endpoints);
 
