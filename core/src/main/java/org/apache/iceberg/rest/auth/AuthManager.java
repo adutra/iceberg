@@ -54,9 +54,9 @@ public interface AuthManager extends AutoCloseable {
   /**
    * Returns a session for the whole catalog.
    *
-   * <p>The provided REST client is the definitive client to use for contacting the token endpoint
-   * from now on. It is safe to cache this client and reuse it for all subsequent requests to the
-   * authorization server.
+   * <p>The provided REST client is the definitive client to use for contacting the authorization
+   * server from now on. It is safe to cache this client and reuse it for all subsequent requests to
+   * the authorization server.
    *
    * <p>This method cannot return null.
    */
