@@ -22,6 +22,7 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.iceberg.rest.auth.AuthManager;
 
 /**
@@ -37,6 +38,7 @@ public interface HTTPRequest {
   String method();
 
   /** Returns the request body. Currently only String bodies are supported. */
+  @Nullable
   Object body();
 
   /** Returns all the headers of this request. */
