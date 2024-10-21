@@ -30,7 +30,6 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.RESTClient;
-import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.iceberg.util.PropertyUtil;
@@ -53,7 +52,6 @@ public class OAuth2Manager extends RefreshingAuthManager {
           .build();
 
   private RESTClient client;
-  private Map<String, String> properties;
   private AuthConfig config;
   private long startTimeMillis;
   private OAuthTokenResponse authResponse;
@@ -62,7 +60,6 @@ public class OAuth2Manager extends RefreshingAuthManager {
   @Override
   public void initialize(String name, RESTClient restClient, Map<String, String> props) {
     this.client = restClient;
-    this.properties = props;
     this.config = createConfig(props);
     this.sessionCache = new AuthSessionCache(sessionTimeout(props));
     setExecutorNamePrefix(name + "-token-refresh");
@@ -74,9 +71,7 @@ public class OAuth2Manager extends RefreshingAuthManager {
   @Override
   public AuthSession catalogSession() {
     OAuth2Util.AuthSession session =
-        new OAuth2Util.AuthSession(
-            RESTUtil.merge(configHeaders(properties), OAuth2Util.authHeaders(config.token())),
-            config);
+        new OAuth2Util.AuthSession(OAuth2Util.authHeaders(config.token()), config);
     if (config.credential() != null && authResponse == null) {
       this.authResponse =
           OAuth2Util.fetchToken(
@@ -212,9 +207,5 @@ public class OAuth2Manager extends RefreshingAuthManager {
       }
     }
     return expiresInMillis;
-  }
-
-  private static Map<String, String> configHeaders(Map<String, String> props) {
-    return RESTUtil.extractPrefixMap(props, "header.");
   }
 }
