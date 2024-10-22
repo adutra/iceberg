@@ -19,6 +19,7 @@
 package org.apache.iceberg.rest;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -34,7 +35,6 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.LocationProvider;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
-import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
@@ -53,6 +53,7 @@ class RESTTableOperations implements TableOperations {
 
   private final RESTClient client;
   private final String path;
+  private final Map<String, String> headers;
   private final AuthSession authSession;
   private final FileIO io;
   private final List<MetadataUpdate> createChanges;
@@ -64,17 +65,27 @@ class RESTTableOperations implements TableOperations {
   RESTTableOperations(
       RESTClient client,
       String path,
+      Map<String, String> headers,
       AuthSession authSession,
       FileIO io,
       TableMetadata current,
       Set<Endpoint> endpoints) {
     this(
-        client, path, authSession, io, UpdateType.SIMPLE, Lists.newArrayList(), current, endpoints);
+        client,
+        path,
+        headers,
+        authSession,
+        io,
+        UpdateType.SIMPLE,
+        Lists.newArrayList(),
+        current,
+        endpoints);
   }
 
   RESTTableOperations(
       RESTClient client,
       String path,
+      Map<String, String> headers,
       AuthSession authSession,
       FileIO io,
       UpdateType updateType,
@@ -83,6 +94,7 @@ class RESTTableOperations implements TableOperations {
       Set<Endpoint> endpoints) {
     this.client = client;
     this.path = path;
+    this.headers = headers;
     this.authSession = authSession;
     this.io = io;
     this.updateType = updateType;
@@ -108,7 +120,7 @@ class RESTTableOperations implements TableOperations {
         client.get(
             path,
             LoadTableResponse.class,
-            ImmutableMap.of(),
+            headers,
             authSession,
             ErrorHandlers.tableErrorHandler()));
   }
@@ -162,8 +174,7 @@ class RESTTableOperations implements TableOperations {
     // UnknownCommitStateException
     // TODO: ensure that the HTTP client lib passes HTTP client errors to the error handler
     LoadTableResponse response =
-        client.post(
-            path, request, LoadTableResponse.class, ImmutableMap.of(), authSession, errorHandler);
+        client.post(path, request, LoadTableResponse.class, headers, authSession, errorHandler);
 
     // all future commits should be simple commits
     this.updateType = UpdateType.SIMPLE;

@@ -18,11 +18,11 @@
  */
 package org.apache.iceberg.rest;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.iceberg.UpdateRequirements;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
-import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
@@ -32,6 +32,7 @@ import org.apache.iceberg.view.ViewOperations;
 class RESTViewOperations implements ViewOperations {
   private final RESTClient client;
   private final String path;
+  private final Map<String, String> headers;
   private final AuthSession authSession;
   private final Set<Endpoint> endpoints;
   private ViewMetadata current;
@@ -39,12 +40,14 @@ class RESTViewOperations implements ViewOperations {
   RESTViewOperations(
       RESTClient client,
       String path,
+      Map<String, String> headers,
       AuthSession authSession,
       ViewMetadata current,
       Set<Endpoint> endpoints) {
     Preconditions.checkArgument(null != current, "Invalid view metadata: null");
     this.client = client;
     this.path = path;
+    this.headers = headers;
     this.authSession = authSession;
     this.current = current;
     this.endpoints = endpoints;
@@ -60,11 +63,7 @@ class RESTViewOperations implements ViewOperations {
     Endpoint.check(endpoints, Endpoint.V1_LOAD_VIEW);
     return updateCurrentMetadata(
         client.get(
-            path,
-            LoadViewResponse.class,
-            ImmutableMap.of(),
-            authSession,
-            ErrorHandlers.viewErrorHandler()));
+            path, LoadViewResponse.class, headers, authSession, ErrorHandlers.viewErrorHandler()));
   }
 
   @Override
@@ -82,7 +81,7 @@ class RESTViewOperations implements ViewOperations {
             path,
             request,
             LoadViewResponse.class,
-            ImmutableMap.of(),
+            headers,
             authSession,
             ErrorHandlers.viewCommitHandler());
 

@@ -430,6 +430,7 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
         new RESTTableOperations(
             client,
             paths.table(finalIdentifier),
+            configHeaders,
             session,
             tableFileIO(context, response.config()),
             tableMetadata,
@@ -507,6 +508,7 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
         new RESTTableOperations(
             client,
             paths.table(ident),
+            configHeaders,
             session,
             tableFileIO(context, response.config()),
             response.tableMetadata(),
@@ -708,6 +710,7 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
           new RESTTableOperations(
               client,
               paths.table(ident),
+              configHeaders,
               session,
               tableFileIO(context, response.config()),
               response.tableMetadata(),
@@ -734,6 +737,7 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
           new RESTTableOperations(
               client,
               paths.table(ident),
+              configHeaders,
               session,
               tableFileIO(context, response.config()),
               RESTTableOperations.UpdateType.CREATE,
@@ -795,6 +799,7 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
           new RESTTableOperations(
               client,
               paths.table(ident),
+              configHeaders,
               session,
               tableFileIO(context, response.config()),
               RESTTableOperations.UpdateType.REPLACE,
@@ -1032,7 +1037,8 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
     ViewMetadata metadata = response.metadata();
 
     RESTViewOperations ops =
-        new RESTViewOperations(client, paths.view(identifier), session, metadata, endpoints);
+        new RESTViewOperations(
+            client, paths.view(identifier), configHeaders, session, metadata, endpoints);
 
     return new BaseView(ops, ViewUtil.fullViewName(name(), identifier));
   }
@@ -1180,7 +1186,12 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
       AuthSession session = authManager.tableSession(identifier, tableConf, contextualSession);
       RESTViewOperations ops =
           new RESTViewOperations(
-              client, paths.view(identifier), session, response.metadata(), endpoints);
+              client,
+              paths.view(identifier),
+              configHeaders,
+              session,
+              response.metadata(),
+              endpoints);
 
       return new BaseView(ops, ViewUtil.fullViewName(name(), identifier));
     }
@@ -1262,7 +1273,8 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
       AuthSession parent = authManager.contextualSession(context, catalogAuth);
       AuthSession session = authManager.tableSession(identifier, tableConf, parent);
       RESTViewOperations ops =
-          new RESTViewOperations(client, paths.view(identifier), session, metadata, endpoints);
+          new RESTViewOperations(
+              client, paths.view(identifier), configHeaders, session, metadata, endpoints);
 
       ops.commit(metadata, replacement);
 
