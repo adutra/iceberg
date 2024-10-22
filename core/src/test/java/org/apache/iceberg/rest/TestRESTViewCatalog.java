@@ -86,6 +86,9 @@ public class TestRESTViewCatalog extends ViewCatalogTests<RESTCatalog> {
               Map<String, String> headers,
               AuthSession authSession,
               Consumer<ErrorResponse> errorHandler) {
+            if (!"v1/oauth/tokens".equals(path)) {
+              assertThat(headers).containsEntry("CustomHeader", "ABC");
+            }
             Object request = roundTripSerialize(body, "request");
             T response =
                 super.execute(
@@ -126,7 +129,12 @@ public class TestRESTViewCatalog extends ViewCatalogTests<RESTCatalog> {
     restCatalog.initialize(
         "prod",
         ImmutableMap.of(
-            CatalogProperties.URI, httpServer.getURI().toString(), "credential", "catalog:12345"));
+            CatalogProperties.URI,
+            httpServer.getURI().toString(),
+            "credential",
+            "catalog:12345",
+            "header.CustomHeader",
+            "ABC"));
   }
 
   @SuppressWarnings("unchecked")
@@ -169,7 +177,9 @@ public class TestRESTViewCatalog extends ViewCatalogTests<RESTCatalog> {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
     RESTCatalog catalog =
         new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
-    catalog.initialize("test", ImmutableMap.of(RESTSessionCatalog.REST_PAGE_SIZE, "10"));
+    catalog.initialize(
+        "test",
+        ImmutableMap.of(RESTSessionCatalog.REST_PAGE_SIZE, "10", "header.CustomHeader", "ABC"));
 
     String namespaceName = "newdb";
     String viewName = "newview";
@@ -197,7 +207,7 @@ public class TestRESTViewCatalog extends ViewCatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             any(AuthSession.class),
             any());
 
@@ -208,7 +218,7 @@ public class TestRESTViewCatalog extends ViewCatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadViewResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             any(AuthSession.class),
             any());
 

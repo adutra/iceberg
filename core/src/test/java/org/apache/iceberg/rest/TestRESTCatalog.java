@@ -125,9 +125,11 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         ImmutableMap.of(CatalogProperties.WAREHOUSE_LOCATION, warehouse.getAbsolutePath()));
 
     Map<String, String> catalogHeaders =
-        ImmutableMap.of("Authorization", "Bearer client-credentials-token:sub=catalog");
+        ImmutableMap.of(
+            "Authorization", "Bearer client-credentials-token:sub=catalog", "CustomHeader", "ABC");
     Map<String, String> contextHeaders =
-        ImmutableMap.of("Authorization", "Bearer client-credentials-token:sub=user");
+        ImmutableMap.of(
+            "Authorization", "Bearer client-credentials-token:sub=user", "CustomHeader", "ABC");
 
     RESTCatalogAdapter adaptor =
         new RESTCatalogAdapter(backendCatalog) {
@@ -195,7 +197,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             CatalogProperties.FILE_IO_IMPL,
             "org.apache.iceberg.inmemory.InMemoryFileIO",
             "credential",
-            "catalog:12345"));
+            "catalog:12345",
+            "header.CustomHeader",
+            "ABC"));
   }
 
   @SuppressWarnings("unchecked")
@@ -291,9 +295,14 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     RESTCatalog restCat = new RESTCatalog((config) -> testClient);
     Map<String, String> initialConfig =
         ImmutableMap.of(
-            CatalogProperties.URI, "http://localhost:8080",
-            CatalogProperties.CACHE_ENABLED, "true",
-            CatalogProperties.WAREHOUSE_LOCATION, "s3://bucket/");
+            CatalogProperties.URI,
+            "http://localhost:8080",
+            CatalogProperties.CACHE_ENABLED,
+            "true",
+            CatalogProperties.WAREHOUSE_LOCATION,
+            "s3://bucket/",
+            "header.CustomHeader",
+            "ABC");
 
     restCat.setConf(new Configuration());
     restCat.initialize("prod", initialConfig);
@@ -336,7 +345,14 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     RESTCatalog catalog =
         new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
     catalog.initialize(
-        "prod", ImmutableMap.of(CatalogProperties.URI, "ignored", "token", "bearer-token"));
+        "prod",
+        ImmutableMap.of(
+            CatalogProperties.URI,
+            "ignored",
+            "token",
+            "bearer-token",
+            "header.CustomHeader",
+            "ABC"));
 
     assertThat(catalog.tableExists(TableIdentifier.of("ns", "table"))).isFalse();
 
@@ -348,7 +364,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
     Mockito.verify(adapter)
@@ -358,7 +374,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
   }
@@ -374,7 +390,14 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     RESTCatalog catalog =
         new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
     catalog.initialize(
-        "prod", ImmutableMap.of(CatalogProperties.URI, "ignored", "credential", "catalog:secret"));
+        "prod",
+        ImmutableMap.of(
+            CatalogProperties.URI,
+            "ignored",
+            "credential",
+            "catalog:secret",
+            "header.CustomHeader",
+            "ABC"));
 
     assertThat(catalog.tableExists(TableIdentifier.of("ns", "table"))).isFalse();
 
@@ -397,7 +420,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
     // use the catalog token for all interactions
@@ -408,7 +431,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
   }
@@ -432,7 +455,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "credential",
             "catalog:secret",
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     assertThat(catalog.tableExists(TableIdentifier.of("ns", "table"))).isFalse();
 
@@ -455,7 +480,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
     // use the catalog token for all interactions
@@ -466,7 +491,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
   }
@@ -496,7 +521,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "token",
             "bearer-token",
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     assertThat(catalog.tableExists(TableIdentifier.of("ns", "table"))).isFalse();
 
@@ -508,7 +535,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
     // use the bearer token to fetch the context token
@@ -530,7 +557,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(contextHeaders),
             any());
   }
@@ -562,7 +589,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "credential",
             "catalog:secret",
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     assertThat(catalog.tableExists(TableIdentifier.of("ns", "table"))).isFalse();
 
@@ -585,7 +614,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
     // use the client credential to fetch the context token
@@ -607,7 +636,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(contextHeaders),
             any());
   }
@@ -641,7 +670,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "token",
             "bearer-token",
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     assertThat(catalog.tableExists(TableIdentifier.of("ns", "table"))).isFalse();
 
@@ -664,7 +695,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
     // use the client credential to fetch the context token
@@ -686,7 +717,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(contextHeaders),
             any());
   }
@@ -840,6 +871,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             .put("token", catalogToken)
             .put(OAuth2Properties.OAUTH2_SERVER_URI, oauth2ServerUri)
             .putAll(optionalOAuthParams)
+            .put("header.CustomHeader", "ABC")
             .build();
     catalog.initialize("prod", initializationProperties);
 
@@ -852,7 +884,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
 
@@ -877,7 +909,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(expectedHeaders),
             any());
     if (!optionalOAuthParams.isEmpty()) {
@@ -958,7 +990,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "org.apache.iceberg.inmemory.InMemoryFileIO",
             // default loading to refs only
             "snapshot-loading-mode",
-            "refs"));
+            "refs",
+            "header.CustomHeader",
+            "ABC"));
 
     if (requiresNamespaceCreate()) {
       catalog.createNamespace(TABLE.namespace());
@@ -1066,7 +1100,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             CatalogProperties.FILE_IO_IMPL,
             "org.apache.iceberg.inmemory.InMemoryFileIO",
             "snapshot-loading-mode",
-            "refs"));
+            "refs",
+            "header.CustomHeader",
+            "ABC"));
 
     if (requiresNamespaceCreate()) {
       catalog.createNamespace(TABLE.namespace());
@@ -1211,7 +1247,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             CatalogProperties.FILE_IO_IMPL,
             "org.apache.iceberg.inmemory.InMemoryFileIO",
             "snapshot-loading-mode",
-            "refs"));
+            "refs",
+            "header.CustomHeader",
+            "ABC"));
 
     if (requiresNamespaceCreate()) {
       catalog.createNamespace(TABLE.namespace());
@@ -1308,7 +1346,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(expectedContextHeaders),
             any());
 
@@ -1320,7 +1358,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(expectedContextHeaders),
             any());
 
@@ -1337,7 +1375,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "token",
             catalogToken,
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     Schema expectedSchema =
         new Schema(
@@ -1367,7 +1407,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
     // session client credentials flow
@@ -1390,7 +1430,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(expectedContextHeaders),
             any());
 
@@ -1418,7 +1458,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
               any(),
               any(),
               eq(LoadTableResponse.class),
-              eq(ImmutableMap.of()),
+              eq(ImmutableMap.of("CustomHeader", "ABC")),
               authSessionWithMatchingHeaders(expectedTableHeaders),
               any());
     } else {
@@ -1430,7 +1470,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
               any(),
               any(),
               eq(LoadTableResponse.class),
-              eq(ImmutableMap.of()),
+              eq(ImmutableMap.of("CustomHeader", "ABC")),
               authSessionWithMatchingHeaders(expectedContextHeaders),
               any());
 
@@ -1442,7 +1482,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
               any(),
               any(),
               eq(LoadTableResponse.class),
-              eq(ImmutableMap.of()),
+              eq(ImmutableMap.of("CustomHeader", "ABC")),
               authSessionWithMatchingHeaders(expectedTableHeaders),
               any());
     }
@@ -1495,7 +1535,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "credential",
             "catalog:secret",
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     Awaitility.await()
         .atMost(5, TimeUnit.SECONDS)
@@ -1521,7 +1563,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
                       any(),
                       any(),
                       eq(ConfigResponse.class),
-                      eq(ImmutableMap.of()),
+                      eq(ImmutableMap.of("CustomHeader", "ABC")),
                       authSessionWithMatchingHeaders(catalogHeaders),
                       any());
 
@@ -1615,7 +1657,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "credential",
             "catalog:secret",
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     Awaitility.await()
         .atMost(5, TimeUnit.SECONDS)
@@ -1644,7 +1688,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
                       any(),
                       any(),
                       eq(ConfigResponse.class),
-                      eq(ImmutableMap.of()),
+                      eq(ImmutableMap.of("CustomHeader", "ABC")),
                       authSessionWithMatchingHeaders(catalogHeaders),
                       any());
 
@@ -1678,7 +1722,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
                       any(),
                       any(),
                       eq(LoadTableResponse.class),
-                      eq(ImmutableMap.of()),
+                      eq(ImmutableMap.of("CustomHeader", "ABC")),
                       authSessionWithMatchingHeaders(refreshedCatalogHeader),
                       any());
             });
@@ -1703,7 +1747,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "credential",
             "catalog:12345",
             CatalogProperties.METRICS_REPORTER_IMPL,
-            CustomMetricsReporter.class.getName()));
+            CustomMetricsReporter.class.getName(),
+            "header.CustomHeader",
+            "ABC"));
 
     if (requiresNamespaceCreate()) {
       restCatalog.createNamespace(TABLE.namespace());
@@ -1754,7 +1800,10 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
 
     RESTCatalog catalog = new RESTCatalog(context, (config) -> adapter);
 
-    catalog.initialize("prod", ImmutableMap.of(CatalogProperties.URI, "ignored", "token", token));
+    catalog.initialize(
+        "prod",
+        ImmutableMap.of(
+            CatalogProperties.URI, "ignored", "token", token, "header.CustomHeader", "ABC"));
   }
 
   @ParameterizedTest
@@ -1785,7 +1834,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "credential",
             credential,
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     assertThat(catalog.tableExists(TableIdentifier.of("ns", "table"))).isFalse();
 
@@ -1808,7 +1859,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
 
@@ -1854,7 +1905,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeader(
                 "Authorization", "Bearer token-exchange-token:sub=" + token),
             any());
@@ -1877,7 +1928,10 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             UUID.randomUUID().toString(), "user", contextCredentials, ImmutableMap.of());
 
     RESTCatalog catalog = new RESTCatalog(context, (config) -> adapter);
-    catalog.initialize("prod", ImmutableMap.of(CatalogProperties.URI, "ignored", "token", token));
+    catalog.initialize(
+        "prod",
+        ImmutableMap.of(
+            CatalogProperties.URI, "ignored", "token", token, "header.CustomHeader", "ABC"));
 
     assertThat(catalog.tableExists(TableIdentifier.of("ns", "table"))).isFalse();
 
@@ -1888,7 +1942,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
 
@@ -1899,7 +1953,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(LoadTableResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(OAuth2Util.authHeaders(token)),
             any());
   }
@@ -1976,7 +2030,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             "credential",
             credential,
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     Awaitility.await()
         .atMost(5, TimeUnit.SECONDS)
@@ -2005,7 +2061,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
                       any(),
                       any(),
                       eq(ConfigResponse.class),
-                      eq(ImmutableMap.of()),
+                      eq(ImmutableMap.of("CustomHeader", "ABC")),
                       authSessionWithMatchingHeaders(catalogHeaders),
                       any());
 
@@ -2047,7 +2103,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
                       any(),
                       any(),
                       eq(LoadTableResponse.class),
-                      eq(ImmutableMap.of()),
+                      eq(ImmutableMap.of("CustomHeader", "ABC")),
                       authSessionWithMatchingHeaders(refreshedCatalogHeader),
                       any());
             });
@@ -2103,7 +2159,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             OAuth2Properties.SCOPE,
             scope,
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     Awaitility.await()
         .atMost(5, TimeUnit.SECONDS)
@@ -2129,7 +2187,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
                       any(),
                       any(),
                       eq(ConfigResponse.class),
-                      eq(ImmutableMap.of()),
+                      eq(ImmutableMap.of("CustomHeader", "ABC")),
                       authSessionWithMatchingHeaders(catalogHeaders),
                       any());
 
@@ -2201,7 +2259,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             OAuth2Properties.TOKEN_REFRESH_ENABLED,
             "false",
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     Mockito.verify(adapter)
         .execute(
@@ -2210,7 +2270,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
   }
@@ -2238,7 +2298,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             OAuth2Properties.TOKEN_REFRESH_ENABLED,
             "false",
             OAuth2Properties.OAUTH2_SERVER_URI,
-            oauth2ServerUri));
+            oauth2ServerUri,
+            "header.CustomHeader",
+            "ABC"));
 
     // fetch token from client credential
     Map<String, String> fetchTokenFromCredential =
@@ -2269,7 +2331,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             any(),
             any(),
             eq(ConfigResponse.class),
-            eq(ImmutableMap.of()),
+            eq(ImmutableMap.of("CustomHeader", "ABC")),
             authSessionWithMatchingHeaders(catalogHeaders),
             any());
   }
@@ -2416,7 +2478,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     assertThatThrownBy(
             () ->
                 catalog.initialize(
-                    "test", ImmutableMap.of(RESTSessionCatalog.REST_PAGE_SIZE, "-1")))
+                    "test",
+                    ImmutableMap.of(
+                        RESTSessionCatalog.REST_PAGE_SIZE, "-1", "header.CustomHeader", "ABC")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             String.format(
@@ -2430,7 +2494,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
     RESTCatalog catalog =
         new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
-    catalog.initialize("test", ImmutableMap.of(RESTSessionCatalog.REST_PAGE_SIZE, "10"));
+    catalog.initialize(
+        "test",
+        ImmutableMap.of(RESTSessionCatalog.REST_PAGE_SIZE, "10", "header.CustomHeader", "ABC"));
     String namespaceName = "newdb";
 
     // create several namespaces for listing and verify
@@ -2494,7 +2560,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
     RESTCatalog catalog =
         new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
-    catalog.initialize("test", ImmutableMap.of(RESTSessionCatalog.REST_PAGE_SIZE, "10"));
+    catalog.initialize(
+        "test",
+        ImmutableMap.of(RESTSessionCatalog.REST_PAGE_SIZE, "10", "header.CustomHeader", "ABC"));
     String namespaceName = "newdb";
     String tableName = "newtable";
     catalog.createNamespace(Namespace.of(namespaceName));
@@ -2814,7 +2882,10 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     catalog.initialize(
         "test",
         ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+            CatalogProperties.FILE_IO_IMPL,
+            "org.apache.iceberg.inmemory.InMemoryFileIO",
+            "header.CustomHeader",
+            "ABC"));
     return catalog;
   }
 
