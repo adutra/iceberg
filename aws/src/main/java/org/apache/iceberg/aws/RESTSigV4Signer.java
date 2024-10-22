@@ -100,16 +100,16 @@ public class RESTSigV4Signer implements AuthManager, AuthSession {
         .uri(request.uri())
         .headers(convertHeaders(request.headers()));
 
-    if (request.body() == null) {
+    Object body = request.body();
+    if (body == null) {
       // This is a workaround for the signer implementation incorrectly producing
       // an invalid content checksum for empty body requests.
       sdkRequestBuilder.putHeader(SignerConstant.X_AMZ_CONTENT_SHA256, EMPTY_BODY_SHA256);
-    } else if (request.body() instanceof String) {
+    } else if (body instanceof String) {
       sdkRequestBuilder.contentStreamProvider(
-          () -> IOUtils.toInputStream((String) request.body(), StandardCharsets.UTF_8));
+          () -> IOUtils.toInputStream((String) body, StandardCharsets.UTF_8));
     } else {
-      throw new UnsupportedOperationException(
-          "Unsupported entity type: " + request.body().getClass());
+      throw new UnsupportedOperationException("Unsupported entity type: " + body.getClass());
     }
 
     SdkHttpFullRequest signedSdkRequest = signer.sign(sdkRequestBuilder.build(), params);
