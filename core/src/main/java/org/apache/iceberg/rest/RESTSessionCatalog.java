@@ -242,11 +242,11 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
 
     this.fileIOTracker = new FileIOTracker();
     this.closeables = new CloseableGroup();
+    this.closeables.addCloseable(this.catalogAuth);
+    this.closeables.addCloseable(this.authManager);
     this.closeables.addCloseable(this.io);
     this.closeables.addCloseable(this.client);
     this.closeables.addCloseable(fileIOTracker);
-    this.closeables.addCloseable(this.catalogAuth);
-    this.closeables.addCloseable(this.authManager);
     this.closeables.setSuppressCloseFailure(true);
 
     this.snapshotMode =
