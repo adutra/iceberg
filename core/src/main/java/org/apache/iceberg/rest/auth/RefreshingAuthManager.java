@@ -27,7 +27,10 @@ import org.apache.iceberg.util.ThreadPools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** An AuthManager that provides machinery for refreshing authentication data. */
+/**
+ * An {@link AuthManager} that provides machinery for refreshing authentication data asynchronously,
+ * using a background thread pool.
+ */
 public abstract class RefreshingAuthManager implements AuthManager {
 
   private static final Logger LOG = LoggerFactory.getLogger(RefreshingAuthManager.class);

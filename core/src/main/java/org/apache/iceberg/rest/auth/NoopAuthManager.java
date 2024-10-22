@@ -27,7 +27,7 @@ public class NoopAuthManager implements AuthManager {
   private static final AuthSession NOOP = request -> {};
 
   @Override
-  public AuthSession catalogSession(RESTClient client, Map<String, String> properties) {
+  public AuthSession catalogSession(RESTClient sharedClient, Map<String, String> properties) {
     return NOOP;
   }
 }

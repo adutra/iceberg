@@ -42,8 +42,8 @@ public interface AuthManager extends AutoCloseable {
    * the returned session will be closed after the configuration endpoint is contacted, and should
    * not be cached.
    *
-   * <p>The provided REST client should only be used to contact the configuration endpoint; it
-   * should be discarded after that.
+   * <p>The provided REST client is a short-lived client; it should only be used to fetch initial
+   * credentials, if required, and must be discarded after that.
    *
    * <p>This method cannot return null. By default, it returns the catalog session.
    */
@@ -54,13 +54,13 @@ public interface AuthManager extends AutoCloseable {
   /**
    * Returns a session for the whole catalog.
    *
-   * <p>The provided REST client is the definitive client to use for contacting the authorization
-   * server from now on. It is safe to cache this client and reuse it for all subsequent requests to
-   * the authorization server.
+   * <p>The provided REST client is a long-lived, shared client; if required, implementors may store
+   * it and reuse it for all subsequent requests to the authorization server, e.g. for renewing or
+   * refreshing credentials. It is not necessary to close it when {@link #close()} is called.
    *
    * <p>This method cannot return null.
    */
-  AuthSession catalogSession(RESTClient client, Map<String, String> properties);
+  AuthSession catalogSession(RESTClient sharedClient, Map<String, String> properties);
 
   /**
    * Returns a session for a specific context.
