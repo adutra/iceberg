@@ -18,9 +18,9 @@
  */
 package org.apache.iceberg.rest;
 
+import java.util.Map;
 import org.apache.iceberg.metrics.MetricsReport;
 import org.apache.iceberg.metrics.MetricsReporter;
-import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.slf4j.Logger;
@@ -35,11 +35,17 @@ class RESTMetricsReporter implements MetricsReporter {
 
   private final RESTClient client;
   private final String metricsEndpoint;
+  private final Map<String, String> headers;
   private final AuthSession authSession;
 
-  RESTMetricsReporter(RESTClient client, String metricsEndpoint, AuthSession authSession) {
+  RESTMetricsReporter(
+      RESTClient client,
+      String metricsEndpoint,
+      Map<String, String> headers,
+      AuthSession authSession) {
     this.client = client;
     this.metricsEndpoint = metricsEndpoint;
+    this.headers = headers;
     this.authSession = authSession;
   }
 
@@ -55,7 +61,7 @@ class RESTMetricsReporter implements MetricsReporter {
           metricsEndpoint,
           ReportMetricsRequest.of(report),
           null,
-          ImmutableMap.of(),
+          headers,
           authSession,
           ErrorHandlers.defaultErrorHandler());
     } catch (Exception e) {

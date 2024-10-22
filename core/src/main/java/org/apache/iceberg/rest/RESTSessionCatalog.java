@@ -456,10 +456,10 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
     }
   }
 
-  private MetricsReporter metricsReporter(String metricsEndpoint, AuthSession headers) {
+  private MetricsReporter metricsReporter(String metricsEndpoint, AuthSession session) {
     if (reportingViaRestEnabled && endpoints.contains(Endpoint.V1_REPORT_METRICS)) {
       RESTMetricsReporter restMetricsReporter =
-          new RESTMetricsReporter(client, metricsEndpoint, headers);
+          new RESTMetricsReporter(client, metricsEndpoint, configHeaders, session);
       return MetricsReporters.combine(reporter, restMetricsReporter);
     } else {
       return this.reporter;
