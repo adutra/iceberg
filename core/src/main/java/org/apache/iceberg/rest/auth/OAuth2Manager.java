@@ -27,6 +27,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
+import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.RESTClient;
@@ -78,6 +79,7 @@ public class OAuth2Manager extends RefreshingAuthManager {
       this.authResponse =
           OAuth2Util.fetchToken(
               initClient,
+              ImmutableMap.of(),
               session,
               config.credential(),
               config.scope(),
