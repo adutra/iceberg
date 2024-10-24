@@ -27,10 +27,10 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
-import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.RESTClient;
+import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.iceberg.util.PropertyUtil;
@@ -61,6 +61,7 @@ public class OAuth2Manager extends RefreshingAuthManager {
   private long startTimeMillis;
   private OAuthTokenResponse authResponse;
   private AuthSessionCache sessionCache;
+  private Map<String, String> extraHeaders;
 
   @Override
   public void setName(String name) {
@@ -70,6 +71,10 @@ public class OAuth2Manager extends RefreshingAuthManager {
   @Override
   public AuthSession preConfigSession(RESTClient initClient, Map<String, String> properties) {
     warnIfTokenEndpointUsed(properties);
+    // FIXME these headers are meant for the catalog server;
+    // they should not be passed to the token endpoint
+    // if the auth server is different from the catalog server.
+    extraHeaders = RESTUtil.extractPrefixMap(properties, "header.");
     AuthConfig config = createConfig(properties);
     Map<String, String> headers = OAuth2Util.authHeaders(config.token());
     OAuth2Util.AuthSession session = new OAuth2Util.AuthSession(headers, config);
@@ -79,17 +84,17 @@ public class OAuth2Manager extends RefreshingAuthManager {
       this.authResponse =
           OAuth2Util.fetchToken(
               initClient,
-              ImmutableMap.of(),
+              extraHeaders,
               session,
               config.credential(),
               config.scope(),
               config.oauth2ServerUri(),
               config.optionalOAuthParams());
       return OAuth2Util.AuthSession.fromTokenResponse(
-          initClient, null, authResponse, startTimeMillis, session);
+          initClient, null, authResponse, startTimeMillis, session, extraHeaders);
     } else if (config.token() != null) {
       return OAuth2Util.AuthSession.fromAccessToken(
-          initClient, null, config.token(), null, session);
+          initClient, null, config.token(), null, session, extraHeaders);
     }
     return session;
   }
@@ -104,10 +109,15 @@ public class OAuth2Manager extends RefreshingAuthManager {
     setKeepRefreshed(config.keepRefreshed());
     if (authResponse != null /* from the pre-config phase */) {
       return OAuth2Util.AuthSession.fromTokenResponse(
-          this.client, refreshExecutor(), authResponse, startTimeMillis, session);
+          this.client, refreshExecutor(), authResponse, startTimeMillis, session, extraHeaders);
     } else if (config.token() != null) {
       return OAuth2Util.AuthSession.fromAccessToken(
-          this.client, refreshExecutor(), config.token(), config.expiresAtMillis(), session);
+          this.client,
+          refreshExecutor(),
+          config.token(),
+          config.expiresAtMillis(),
+          session,
+          extraHeaders);
     }
     return session;
   }
@@ -160,7 +170,12 @@ public class OAuth2Manager extends RefreshingAuthManager {
             cacheKeyFunc.apply(OAuth2Properties.TOKEN),
             () ->
                 OAuth2Util.AuthSession.fromAccessToken(
-                    client, refreshExecutor(), token, expiresAtMillis(properties), parent));
+                    client,
+                    refreshExecutor(),
+                    token,
+                    expiresAtMillis(properties),
+                    parent,
+                    extraHeaders));
       }
 
       if (credentials.containsKey(OAuth2Properties.CREDENTIAL)) {
@@ -170,7 +185,7 @@ public class OAuth2Manager extends RefreshingAuthManager {
             cacheKeyFunc.apply(OAuth2Properties.CREDENTIAL),
             () ->
                 OAuth2Util.AuthSession.fromCredential(
-                    client, refreshExecutor(), credential, parent));
+                    client, refreshExecutor(), credential, parent, extraHeaders));
       }
 
       for (String tokenType : TOKEN_PREFERENCE_ORDER) {
@@ -181,7 +196,7 @@ public class OAuth2Manager extends RefreshingAuthManager {
               cacheKeyFunc.apply(tokenType),
               () ->
                   OAuth2Util.AuthSession.fromTokenExchange(
-                      client, refreshExecutor(), token, tokenType, parent));
+                      client, refreshExecutor(), token, tokenType, parent, extraHeaders));
         }
       }
     }

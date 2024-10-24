@@ -211,6 +211,7 @@ public class OAuth2Util {
     return response;
   }
 
+  @Deprecated
   public static OAuthTokenResponse exchangeToken(
       RESTClient client,
       Map<String, String> headers,
@@ -234,6 +235,7 @@ public class OAuth2Util {
         optionalParams);
   }
 
+  @Deprecated
   public static OAuthTokenResponse exchangeToken(
       RESTClient client,
       Map<String, String> headers,
@@ -254,6 +256,7 @@ public class OAuth2Util {
         ImmutableMap.of());
   }
 
+  @Deprecated
   public static OAuthTokenResponse exchangeToken(
       RESTClient client,
       Map<String, String> headers,
@@ -302,6 +305,7 @@ public class OAuth2Util {
     return response;
   }
 
+  @Deprecated
   public static OAuthTokenResponse fetchToken(
       RESTClient client,
       Map<String, String> headers,
@@ -313,6 +317,7 @@ public class OAuth2Util {
         client, headers, AuthSession.empty(), credential, scope, oauth2ServerUri, optionalParams);
   }
 
+  @Deprecated
   public static OAuthTokenResponse fetchToken(
       RESTClient client, Map<String, String> headers, String credential, String scope) {
 
@@ -320,6 +325,7 @@ public class OAuth2Util {
         client, headers, credential, scope, ResourcePaths.tokens(), ImmutableMap.of());
   }
 
+  @Deprecated
   public static OAuthTokenResponse fetchToken(
       RESTClient client,
       Map<String, String> headers,
@@ -577,9 +583,10 @@ public class OAuth2Util {
      * Attempt to refresh the session token using the token exchange flow.
      *
      * @param client a RESTClient
+     * @param extraHeaders Extra headers to include in the refresh token request
      * @return interval to wait before calling refresh again, or null if no refresh is needed
      */
-    public Pair<Integer, TimeUnit> refresh(RESTClient client) {
+    public Pair<Integer, TimeUnit> refresh(RESTClient client, Map<String, String> extraHeaders) {
       if (token() != null && config.keepRefreshed()) {
         AtomicReference<OAuthTokenResponse> ref = new AtomicReference<>(null);
         boolean isSuccessful =
@@ -589,7 +596,7 @@ public class OAuth2Util {
                 .onFailure(
                     (holder, err) -> {
                       // attempt to refresh using the client credential instead of the parent token
-                      holder.set(refreshExpiredToken(client));
+                      holder.set(refreshExpiredToken(client, extraHeaders));
                       if (holder.get() == null) {
                         LOG.warn("Failed to refresh token", err);
                       }
@@ -599,7 +606,7 @@ public class OAuth2Util {
                     COMMIT_MAX_RETRY_WAIT_MS_DEFAULT,
                     COMMIT_TOTAL_RETRY_TIME_MS_DEFAULT,
                     2.0 /* exponential */)
-                .run(holder -> holder.set(refreshCurrentToken(client)));
+                .run(holder -> holder.set(refreshCurrentToken(client, extraHeaders)));
 
         if (!isSuccessful || ref.get() == null) {
           return null;
@@ -623,15 +630,21 @@ public class OAuth2Util {
       return null;
     }
 
-    private OAuthTokenResponse refreshCurrentToken(RESTClient client) {
+    @Deprecated
+    public Pair<Integer, TimeUnit> refresh(RESTClient client) {
+      return refresh(client, ImmutableMap.of());
+    }
+
+    private OAuthTokenResponse refreshCurrentToken(
+        RESTClient client, Map<String, String> extraHeaders) {
       if (null != expiresAtMillis() && expiresAtMillis() <= System.currentTimeMillis()) {
         // the token has already expired, attempt to refresh using the credential
-        return refreshExpiredToken(client);
+        return refreshExpiredToken(client, extraHeaders);
       } else {
         // attempt a normal refresh
         return refreshToken(
             client,
-            ImmutableMap.of(),
+            extraHeaders,
             this,
             token(),
             tokenType(),
@@ -641,12 +654,13 @@ public class OAuth2Util {
       }
     }
 
-    private OAuthTokenResponse refreshExpiredToken(RESTClient client) {
+    private OAuthTokenResponse refreshExpiredToken(
+        RESTClient client, Map<String, String> extraHeaders) {
       if (credential() != null) {
         Map<String, String> basicHeaders = RESTUtil.merge(headers, basicAuthHeaders(credential()));
         return refreshToken(
             client,
-            ImmutableMap.of(),
+            extraHeaders,
             new AuthSession(basicHeaders, config),
             token(),
             tokenType(),
@@ -665,13 +679,15 @@ public class OAuth2Util {
      * @param executor a ScheduledExecutorService in which to run the refresh
      * @param session AuthSession to refresh
      * @param expiresAtMillis The epoch millis at which the token expires at
+     * @param extraHeaders Extra headers to include in the refresh token request
      */
     @SuppressWarnings("FutureReturnValueIgnored")
     private static void scheduleTokenRefresh(
         RESTClient client,
         ScheduledExecutorService executor,
         AuthSession session,
-        long expiresAtMillis) {
+        long expiresAtMillis,
+        Map<String, String> extraHeaders) {
       long expiresInMillis = expiresAtMillis - System.currentTimeMillis();
       // how much ahead of time to start the request to allow it to complete
       long refreshWindowMillis = Math.min(expiresInMillis / 10, MAX_REFRESH_WINDOW_MILLIS);
@@ -683,13 +699,14 @@ public class OAuth2Util {
       executor.schedule(
           () -> {
             long refreshStartTime = System.currentTimeMillis();
-            Pair<Integer, TimeUnit> expiration = session.refresh(client);
+            Pair<Integer, TimeUnit> expiration = session.refresh(client, extraHeaders);
             if (expiration != null) {
               scheduleTokenRefresh(
                   client,
                   executor,
                   session,
-                  refreshStartTime + expiration.second().toMillis(expiration.first()));
+                  refreshStartTime + expiration.second().toMillis(expiration.first()),
+                  extraHeaders);
             }
           },
           timeToWait,
@@ -701,7 +718,8 @@ public class OAuth2Util {
         ScheduledExecutorService executor,
         String token,
         Long defaultExpiresAtMillis,
-        AuthSession parent) {
+        AuthSession parent,
+        Map<String, String> extraHeaders) {
       Map<String, String> headers = RESTUtil.merge(parent.headers(), authHeaders(token));
       AuthConfig config =
           AuthConfig.builder()
@@ -715,7 +733,7 @@ public class OAuth2Util {
       Long expiresAtMillis = session.expiresAtMillis();
 
       if (null != expiresAtMillis && expiresAtMillis <= startTimeMillis) {
-        Pair<Integer, TimeUnit> expiration = session.refresh(client);
+        Pair<Integer, TimeUnit> expiration = session.refresh(client, extraHeaders);
         // if expiration is non-null, then token refresh was successful
         if (expiration != null) {
           if (null != session.expiresAtMillis()) {
@@ -734,28 +752,50 @@ public class OAuth2Util {
       }
 
       if (null != executor && null != expiresAtMillis) {
-        scheduleTokenRefresh(client, executor, session, expiresAtMillis);
+        scheduleTokenRefresh(client, executor, session, expiresAtMillis, extraHeaders);
       }
 
       return session;
+    }
+
+    @Deprecated
+    public static AuthSession fromAccessToken(
+        RESTClient client,
+        ScheduledExecutorService executor,
+        String token,
+        Long defaultExpiresAtMillis,
+        AuthSession parent) {
+      return fromAccessToken(
+          client, executor, token, defaultExpiresAtMillis, parent, ImmutableMap.of());
     }
 
     public static AuthSession fromCredential(
         RESTClient client,
         ScheduledExecutorService executor,
         String credential,
-        AuthSession parent) {
+        AuthSession parent,
+        Map<String, String> extraHeaders) {
       long startTimeMillis = System.currentTimeMillis();
       OAuthTokenResponse response =
           fetchToken(
               client,
-              ImmutableMap.of(),
+              extraHeaders,
               parent,
               credential,
               parent.scope(),
               parent.oauth2ServerUri(),
               parent.optionalOAuthParams());
-      return fromTokenResponse(client, executor, response, startTimeMillis, parent, credential);
+      return fromTokenResponse(
+          client, executor, response, startTimeMillis, parent, credential, extraHeaders);
+    }
+
+    @Deprecated
+    public static AuthSession fromCredential(
+        RESTClient client,
+        ScheduledExecutorService executor,
+        String credential,
+        AuthSession parent) {
+      return fromCredential(client, executor, credential, parent, ImmutableMap.of());
     }
 
     public static AuthSession fromTokenResponse(
@@ -763,9 +803,21 @@ public class OAuth2Util {
         ScheduledExecutorService executor,
         OAuthTokenResponse response,
         long startTimeMillis,
+        AuthSession parent,
+        Map<String, String> extraHeaders) {
+      return fromTokenResponse(
+          client, executor, response, startTimeMillis, parent, parent.credential(), extraHeaders);
+    }
+
+    @Deprecated
+    public static AuthSession fromTokenResponse(
+        RESTClient client,
+        ScheduledExecutorService executor,
+        OAuthTokenResponse response,
+        long startTimeMillis,
         AuthSession parent) {
       return fromTokenResponse(
-          client, executor, response, startTimeMillis, parent, parent.credential());
+          client, executor, response, startTimeMillis, parent, ImmutableMap.of());
     }
 
     private static AuthSession fromTokenResponse(
@@ -774,7 +826,8 @@ public class OAuth2Util {
         OAuthTokenResponse response,
         long startTimeMillis,
         AuthSession parent,
-        String credential) {
+        String credential,
+        Map<String, String> extraHeaders) {
       // issued_token_type is required in RFC 8693 but not in RFC 6749,
       // thus assume type is access_token for compatibility with RFC 6749.
       // See https://datatracker.ietf.org/doc/html/rfc6749#section-4.4.3
@@ -799,7 +852,7 @@ public class OAuth2Util {
       }
 
       if (null != executor && null != expiresAtMillis) {
-        scheduleTokenRefresh(client, executor, session, expiresAtMillis);
+        scheduleTokenRefresh(client, executor, session, expiresAtMillis, extraHeaders);
       }
 
       return session;
@@ -810,12 +863,13 @@ public class OAuth2Util {
         ScheduledExecutorService executor,
         String token,
         String tokenType,
-        AuthSession parent) {
+        AuthSession parent,
+        Map<String, String> extraHeaders) {
       long startTimeMillis = System.currentTimeMillis();
       OAuthTokenResponse response =
           exchangeToken(
               client,
-              ImmutableMap.of(),
+              extraHeaders,
               parent,
               token,
               tokenType,
@@ -824,7 +878,18 @@ public class OAuth2Util {
               parent.scope(),
               parent.oauth2ServerUri(),
               parent.optionalOAuthParams());
-      return fromTokenResponse(client, executor, response, startTimeMillis, parent);
+      return fromTokenResponse(client, executor, response, startTimeMillis, parent, extraHeaders);
+    }
+
+    @Deprecated
+    public static AuthSession fromTokenExchange(
+        RESTClient client,
+        ScheduledExecutorService executor,
+        String token,
+        String tokenType,
+        AuthSession parent) {
+      return AuthSession.fromTokenExchange(
+          client, executor, token, tokenType, parent, ImmutableMap.of());
     }
   }
 }
