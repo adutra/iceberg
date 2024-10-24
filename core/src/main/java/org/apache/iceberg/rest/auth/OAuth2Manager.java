@@ -128,7 +128,14 @@ public class OAuth2Manager extends RefreshingAuthManager {
     try {
       super.close();
     } finally {
-      sessionCache.close();
+      try {
+        AuthSessionCache cache = sessionCache;
+        if (cache != null) {
+          cache.close();
+        }
+      } finally {
+        sessionCache = null;
+      }
     }
   }
 
