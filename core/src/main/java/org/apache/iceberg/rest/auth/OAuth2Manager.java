@@ -223,9 +223,6 @@ public class OAuth2Manager extends RefreshingAuthManager {
     Map<String, String> optionalOAuthParams = OAuth2Util.buildOptionalParam(properties);
     String oauth2ServerUri =
         properties.getOrDefault(OAuth2Properties.OAUTH2_SERVER_URI, ResourcePaths.tokens());
-    boolean externalAuth =
-        oauth2ServerUri.startsWith("http")
-            && !oauth2ServerUri.startsWith(properties.get(CatalogProperties.URI));
     boolean keepRefreshed =
         PropertyUtil.propertyAsBoolean(
             properties,
