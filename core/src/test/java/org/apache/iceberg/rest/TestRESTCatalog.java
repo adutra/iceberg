@@ -107,8 +107,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   private static final ObjectMapper MAPPER = RESTObjectMapper.mapper();
   private static final ResourcePaths RESOURCE_PATHS =
       ResourcePaths.forCatalogProperties(Maps.newHashMap());
-  private static final ImmutableMap<String, String> CUSTOM_HEADERS =
-      ImmutableMap.of("CustomHeader", "ABC");
+  private static final Map<String, String> CUSTOM_HEADERS = ImmutableMap.of("CustomHeader", "ABC");
 
   @TempDir public Path temp;
 
@@ -127,11 +126,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         ImmutableMap.of(CatalogProperties.WAREHOUSE_LOCATION, warehouse.getAbsolutePath()));
 
     Map<String, String> catalogHeaders =
-        ImmutableMap.of(
-            "Authorization", "Bearer client-credentials-token:sub=catalog", "CustomHeader", "ABC");
+        ImmutableMap.of("Authorization", "Bearer client-credentials-token:sub=catalog");
     Map<String, String> contextHeaders =
-        ImmutableMap.of(
-            "Authorization", "Bearer client-credentials-token:sub=user", "CustomHeader", "ABC");
+        ImmutableMap.of("Authorization", "Bearer client-credentials-token:sub=user");
 
     RESTCatalogAdapter adaptor =
         new RESTCatalogAdapter(backendCatalog) {
@@ -147,6 +144,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
               Consumer<ErrorResponse> errorHandler) {
             // this doesn't use a Mockito spy because this is used for catalog tests, which have
             // different method calls
+            assertThat(headers).containsAllEntriesOf(CUSTOM_HEADERS);
             if (!"v1/oauth/tokens".equals(path)) {
               if ("v1/config".equals(path)) {
                 assertThat(headers).containsAllEntriesOf(catalogHeaders);

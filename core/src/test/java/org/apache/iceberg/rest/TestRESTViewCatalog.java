@@ -86,9 +86,7 @@ public class TestRESTViewCatalog extends ViewCatalogTests<RESTCatalog> {
               Map<String, String> headers,
               AuthSession authSession,
               Consumer<ErrorResponse> errorHandler) {
-            if (!"v1/oauth/tokens".equals(path)) {
-              assertThat(headers).containsEntry("CustomHeader", "ABC");
-            }
+            assertThat(headers).containsEntry("CustomHeader", "ABC");
             Object request = roundTripSerialize(body, "request");
             T response =
                 super.execute(
