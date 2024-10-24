@@ -151,7 +151,7 @@ public class OAuth2Util {
 
   private static OAuthTokenResponse refreshToken(
       RESTClient client,
-      Map<String, String> headers,
+      Map<String, String> extraHeaders,
       AuthSession authSession,
       String subjectToken,
       String subjectTokenType,
@@ -170,7 +170,7 @@ public class OAuth2Util {
             oauth2ServerUri,
             request,
             OAuthTokenResponse.class,
-            headers,
+            extraHeaders,
             authSession,
             ErrorHandlers.oauthErrorHandler());
     response.validate();
@@ -180,7 +180,7 @@ public class OAuth2Util {
 
   public static OAuthTokenResponse exchangeToken(
       RESTClient client,
-      Map<String, String> headers,
+      Map<String, String> extraHeaders,
       AuthSession authSession,
       String subjectToken,
       String subjectTokenType,
@@ -203,7 +203,7 @@ public class OAuth2Util {
             oauth2ServerUri,
             request,
             OAuthTokenResponse.class,
-            headers,
+            extraHeaders,
             authSession,
             ErrorHandlers.oauthErrorHandler());
     response.validate();
@@ -211,6 +211,9 @@ public class OAuth2Util {
     return response;
   }
 
+  /**
+   * @deprecated since 1.7.0, will be removed in 1.8.0
+   */
   @Deprecated
   public static OAuthTokenResponse exchangeToken(
       RESTClient client,
@@ -235,6 +238,9 @@ public class OAuth2Util {
         optionalParams);
   }
 
+  /**
+   * @deprecated since 1.7.0, will be removed in 1.8.0
+   */
   @Deprecated
   public static OAuthTokenResponse exchangeToken(
       RESTClient client,
@@ -256,6 +262,9 @@ public class OAuth2Util {
         ImmutableMap.of());
   }
 
+  /**
+   * @deprecated since 1.7.0, will be removed in 1.8.0
+   */
   @Deprecated
   public static OAuthTokenResponse exchangeToken(
       RESTClient client,
@@ -280,7 +289,7 @@ public class OAuth2Util {
 
   public static OAuthTokenResponse fetchToken(
       RESTClient client,
-      Map<String, String> headers,
+      Map<String, String> extraHeaders,
       AuthSession authSession,
       String credential,
       String scope,
@@ -297,7 +306,7 @@ public class OAuth2Util {
             oauth2ServerUri,
             request,
             OAuthTokenResponse.class,
-            headers,
+            extraHeaders,
             authSession,
             ErrorHandlers.oauthErrorHandler());
     response.validate();
@@ -305,6 +314,9 @@ public class OAuth2Util {
     return response;
   }
 
+  /**
+   * @deprecated since 1.7.0, will be removed in 1.8.0
+   */
   @Deprecated
   public static OAuthTokenResponse fetchToken(
       RESTClient client,
@@ -317,6 +329,9 @@ public class OAuth2Util {
         client, headers, AuthSession.empty(), credential, scope, oauth2ServerUri, optionalParams);
   }
 
+  /**
+   * @deprecated since 1.7.0, will be removed in 1.8.0
+   */
   @Deprecated
   public static OAuthTokenResponse fetchToken(
       RESTClient client, Map<String, String> headers, String credential, String scope) {
@@ -325,6 +340,9 @@ public class OAuth2Util {
         client, headers, credential, scope, ResourcePaths.tokens(), ImmutableMap.of());
   }
 
+  /**
+   * @deprecated since 1.7.0, will be removed in 1.8.0
+   */
   @Deprecated
   public static OAuthTokenResponse fetchToken(
       RESTClient client,
@@ -630,6 +648,9 @@ public class OAuth2Util {
       return null;
     }
 
+    /**
+     * @deprecated since 1.7.0, will be removed in 1.8.0
+     */
     @Deprecated
     public Pair<Integer, TimeUnit> refresh(RESTClient client) {
       return refresh(client, ImmutableMap.of());
@@ -758,6 +779,9 @@ public class OAuth2Util {
       return session;
     }
 
+    /**
+     * @deprecated since 1.7.0, will be removed in 1.8.0
+     */
     @Deprecated
     public static AuthSession fromAccessToken(
         RESTClient client,
@@ -789,6 +813,9 @@ public class OAuth2Util {
           client, executor, response, startTimeMillis, parent, credential, extraHeaders);
     }
 
+    /**
+     * @deprecated since 1.7.0, will be removed in 1.8.0
+     */
     @Deprecated
     public static AuthSession fromCredential(
         RESTClient client,
@@ -809,6 +836,9 @@ public class OAuth2Util {
           client, executor, response, startTimeMillis, parent, parent.credential(), extraHeaders);
     }
 
+    /**
+     * @deprecated since 1.7.0, will be removed in 1.8.0
+     */
     @Deprecated
     public static AuthSession fromTokenResponse(
         RESTClient client,
@@ -881,6 +911,9 @@ public class OAuth2Util {
       return fromTokenResponse(client, executor, response, startTimeMillis, parent, extraHeaders);
     }
 
+    /**
+     * @deprecated since 1.7.0, will be removed in 1.8.0
+     */
     @Deprecated
     public static AuthSession fromTokenExchange(
         RESTClient client,
