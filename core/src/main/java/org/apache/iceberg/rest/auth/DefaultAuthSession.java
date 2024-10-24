@@ -23,10 +23,11 @@ import org.apache.iceberg.rest.HTTPRequest;
 import org.immutables.value.Value;
 
 /**
- * Default implementation of {@link AuthSession} that sets the provided headers on the request.
+ * Default implementation of {@link AuthSession}. It authenticates requests by setting the provided
+ * headers on the request.
  *
  * <p>Most {@link AuthManager} implementations should make use of this class, unless they need to
- * retain state when creating sessions.
+ * retain state when creating sessions, or if they need to modify the request in a different way.
  */
 @Value.Style(redactedMask = "****")
 @SuppressWarnings("ImmutablesStyle")
@@ -40,10 +41,6 @@ public interface DefaultAuthSession extends AuthSession {
   @Override
   default void authenticate(HTTPRequest request) {
     headers().forEach(request::setHeader);
-  }
-
-  static DefaultAuthSession empty() {
-    return ImmutableDefaultAuthSession.builder().build();
   }
 
   static DefaultAuthSession of(String name, String value) {

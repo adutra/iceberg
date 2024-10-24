@@ -24,7 +24,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.rest.auth.AuthSession;
-import org.apache.iceberg.rest.auth.DefaultAuthSession;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 
 /** Interface for a basic HTTP Client for interfacing with the REST catalog. */
@@ -91,8 +90,7 @@ public interface RESTClient extends Closeable {
       Class<T> responseType,
       Map<String, String> headers,
       Consumer<ErrorResponse> errorHandler) {
-    return delete(
-        path, queryParams, responseType, headers, DefaultAuthSession.empty(), errorHandler);
+    return delete(path, queryParams, responseType, headers, AuthSession.EMPTY, errorHandler);
   }
 
   default <T extends RESTResponse> T delete(
@@ -191,13 +189,7 @@ public interface RESTClient extends Closeable {
       Consumer<ErrorResponse> errorHandler,
       Consumer<Map<String, String>> responseHeaders) {
     return post(
-        path,
-        body,
-        responseType,
-        headers,
-        DefaultAuthSession.empty(),
-        errorHandler,
-        responseHeaders);
+        path, body, responseType, headers, AuthSession.EMPTY, errorHandler, responseHeaders);
   }
 
   default <T extends RESTResponse> T post(

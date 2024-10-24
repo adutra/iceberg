@@ -24,6 +24,8 @@ import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.RESTClient;
 
+/** An auth manager that adds static BASIC authentication data to outgoing HTTP requests. */
+@SuppressWarnings("unused") // loaded by reflection
 public final class BasicAuthManager implements AuthManager {
 
   @Override

@@ -22,12 +22,11 @@ import java.util.Map;
 import org.apache.iceberg.rest.RESTClient;
 
 /** An auth manager that does not add any authentication data to outgoing HTTP requests. */
+@SuppressWarnings("unused") // loaded by reflection
 public class NoopAuthManager implements AuthManager {
-
-  private static final AuthSession NOOP = request -> {};
 
   @Override
   public AuthSession catalogSession(RESTClient sharedClient, Map<String, String> properties) {
-    return NOOP;
+    return AuthSession.EMPTY;
   }
 }

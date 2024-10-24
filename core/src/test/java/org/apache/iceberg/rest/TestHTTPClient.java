@@ -145,7 +145,7 @@ public class TestHTTPClient {
           request("/" + path).withMethod(HttpMethod.HEAD.name().toUpperCase(Locale.ROOT));
       HttpResponse mockResponse = response().withStatusCode(200);
       proxyServer.when(mockRequest).respond(mockResponse);
-      clientWithProxy.head(path, ImmutableMap.of(), DefaultAuthSession.empty(), (onError) -> {});
+      clientWithProxy.head(path, ImmutableMap.of(), AuthSession.EMPTY, (onError) -> {});
       proxyServer.verify(mockRequest, VerificationTimes.exactly(1));
     }
   }
@@ -213,11 +213,7 @@ public class TestHTTPClient {
       assertThatThrownBy(
               () ->
                   clientWithProxy.get(
-                      "v1/config",
-                      Item.class,
-                      ImmutableMap.of(),
-                      DefaultAuthSession.empty(),
-                      onError))
+                      "v1/config", Item.class, ImmutableMap.of(), AuthSession.EMPTY, onError))
           .isInstanceOf(RuntimeException.class)
           .hasMessage(
               String.format(
@@ -263,8 +259,7 @@ public class TestHTTPClient {
       mockServer.when(mockRequest).respond(mockResponse);
 
       assertThatThrownBy(
-              () ->
-                  client.head(path, ImmutableMap.of(), DefaultAuthSession.empty(), (unused) -> {}))
+              () -> client.head(path, ImmutableMap.of(), AuthSession.EMPTY, (unused) -> {}))
           .cause()
           .isInstanceOf(SocketTimeoutException.class)
           .hasMessage("Read timed out");

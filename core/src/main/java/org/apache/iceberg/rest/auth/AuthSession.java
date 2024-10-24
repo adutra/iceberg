@@ -29,6 +29,9 @@ import org.apache.iceberg.rest.HTTPRequest;
  */
 public interface AuthSession extends AutoCloseable {
 
+  /** An empty session that does nothing. */
+  AuthSession EMPTY = request -> {};
+
   /** Applies authentication data to the outgoing HTTP request. */
   void authenticate(HTTPRequest request);
 
