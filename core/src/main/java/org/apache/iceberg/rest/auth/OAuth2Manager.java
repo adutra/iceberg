@@ -33,8 +33,13 @@ import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.iceberg.util.PropertyUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+@SuppressWarnings("unused") // loaded by reflection
 public class OAuth2Manager extends RefreshingAuthManager {
+
+  private static final Logger LOG = LoggerFactory.getLogger(OAuth2Manager.class);
 
   private static final List<String> TOKEN_PREFERENCE_ORDER =
       ImmutableList.of(
@@ -63,6 +68,7 @@ public class OAuth2Manager extends RefreshingAuthManager {
 
   @Override
   public AuthSession preConfigSession(RESTClient initClient, Map<String, String> properties) {
+    warnIfTokenEndpointUsed(properties);
     AuthConfig config = createConfig(properties);
     OAuth2Util.AuthSession session =
         new OAuth2Util.AuthSession(OAuth2Util.authHeaders(config.token()), config);
@@ -178,6 +184,25 @@ public class OAuth2Manager extends RefreshingAuthManager {
       }
     }
     return parent;
+  }
+
+  private static void warnIfTokenEndpointUsed(Map<String, String> properties) {
+    String credential = properties.get(OAuth2Properties.CREDENTIAL);
+    String initToken = properties.get(OAuth2Properties.TOKEN);
+    boolean hasCredential = credential != null && !credential.isEmpty();
+    boolean hasInitToken = initToken != null;
+    if (!properties.containsKey(OAuth2Properties.OAUTH2_SERVER_URI)
+        && (hasInitToken || hasCredential)) {
+      LOG.warn(
+          "Iceberg REST client is missing the OAuth2 server URI configuration and defaults to {}{}. "
+              + "This automatic fallback will be removed in a future Iceberg release."
+              + "It is recommended to configure the OAuth2 endpoint using the '{}' property to be prepared. "
+              + "This warning will disappear if the OAuth2 endpoint is explicitly configured. "
+              + "See https://github.com/apache/iceberg/issues/10537",
+          properties.get(CatalogProperties.URI),
+          ResourcePaths.tokens(),
+          OAuth2Properties.OAUTH2_SERVER_URI);
+    }
   }
 
   private static AuthConfig createConfig(Map<String, String> props) {

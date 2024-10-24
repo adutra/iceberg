@@ -65,7 +65,6 @@ import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.auth.AuthManager;
 import org.apache.iceberg.rest.auth.AuthManagers;
 import org.apache.iceberg.rest.auth.AuthSession;
-import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -95,12 +94,9 @@ import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewRepresentation;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.iceberg.view.ViewVersion;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class RESTSessionCatalog extends BaseViewSessionCatalog
     implements Configurable<Object>, Closeable {
-  private static final Logger LOG = LoggerFactory.getLogger(RESTSessionCatalog.class);
   private static final String DEFAULT_FILE_IO_IMPL = "org.apache.iceberg.io.ResolvingFileIO";
   private static final String REST_METRICS_REPORTING_ENABLED = "rest-metrics-reporting-enabled";
   private static final String REST_SNAPSHOT_LOADING_MODE = "snapshot-loading-mode";
@@ -182,24 +178,6 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
     // note that this is only done for local config properties and not for properties from the
     // catalog service
     Map<String, String> props = EnvironmentUtil.resolveAll(unresolved);
-
-    String credential = props.get(OAuth2Properties.CREDENTIAL);
-    boolean hasCredential = credential != null && !credential.isEmpty();
-    String initToken = props.get(OAuth2Properties.TOKEN);
-    boolean hasInitToken = initToken != null;
-    if (!props.containsKey(OAuth2Properties.OAUTH2_SERVER_URI)
-        && (hasInitToken || hasCredential)
-        && !PropertyUtil.propertyAsBoolean(props, "rest.sigv4-enabled", false)) {
-      LOG.warn(
-          "Iceberg REST client is missing the OAuth2 server URI configuration and defaults to {}{}. "
-              + "This automatic fallback will be removed in a future Iceberg release."
-              + "It is recommended to configure the OAuth2 endpoint using the '{}' property to be prepared. "
-              + "This warning will disappear if the OAuth2 endpoint is explicitly configured. "
-              + "See https://github.com/apache/iceberg/issues/10537",
-          props.get(CatalogProperties.URI),
-          ResourcePaths.tokens(),
-          OAuth2Properties.OAUTH2_SERVER_URI);
-    }
 
     this.authManager = AuthManagers.loadAuthManager(name, props);
 
