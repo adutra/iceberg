@@ -70,8 +70,8 @@ public class OAuth2Manager extends RefreshingAuthManager {
   public AuthSession preConfigSession(RESTClient initClient, Map<String, String> properties) {
     warnIfTokenEndpointUsed(properties);
     AuthConfig config = createConfig(properties);
-    OAuth2Util.AuthSession session =
-        new OAuth2Util.AuthSession(OAuth2Util.authHeaders(config.token()), config);
+    Map<String, String> headers = OAuth2Util.authHeaders(config.token());
+    OAuth2Util.AuthSession session = new OAuth2Util.AuthSession(headers, config);
     if (config.credential() != null) {
       // keep track of the start time for token refresh
       this.startTimeMillis = System.currentTimeMillis();
@@ -97,9 +97,9 @@ public class OAuth2Manager extends RefreshingAuthManager {
     this.client = sharedClient;
     this.sessionCache = new AuthSessionCache(sessionTimeout(properties));
     AuthConfig config = createConfig(properties);
+    Map<String, String> headers = OAuth2Util.authHeaders(config.token());
+    OAuth2Util.AuthSession session = new OAuth2Util.AuthSession(headers, config);
     setKeepRefreshed(config.keepRefreshed());
-    OAuth2Util.AuthSession session =
-        new OAuth2Util.AuthSession(OAuth2Util.authHeaders(config.token()), config);
     if (authResponse != null /* from the pre-config phase */) {
       return OAuth2Util.AuthSession.fromTokenResponse(
           this.client, refreshExecutor(), authResponse, startTimeMillis, session);
@@ -187,42 +187,56 @@ public class OAuth2Manager extends RefreshingAuthManager {
   }
 
   private static void warnIfTokenEndpointUsed(Map<String, String> properties) {
-    String credential = properties.get(OAuth2Properties.CREDENTIAL);
-    String initToken = properties.get(OAuth2Properties.TOKEN);
-    boolean hasCredential = credential != null && !credential.isEmpty();
-    boolean hasInitToken = initToken != null;
-    if (!properties.containsKey(OAuth2Properties.OAUTH2_SERVER_URI)
-        && (hasInitToken || hasCredential)) {
-      LOG.warn(
-          "Iceberg REST client is missing the OAuth2 server URI configuration and defaults to {}{}. "
-              + "This automatic fallback will be removed in a future Iceberg release."
-              + "It is recommended to configure the OAuth2 endpoint using the '{}' property to be prepared. "
-              + "This warning will disappear if the OAuth2 endpoint is explicitly configured. "
-              + "See https://github.com/apache/iceberg/issues/10537",
-          properties.get(CatalogProperties.URI),
-          ResourcePaths.tokens(),
-          OAuth2Properties.OAUTH2_SERVER_URI);
+    if (usesDeprecatedTokenEndpoint(properties)) {
+      String credential = properties.get(OAuth2Properties.CREDENTIAL);
+      String initToken = properties.get(OAuth2Properties.TOKEN);
+      boolean hasCredential = credential != null && !credential.isEmpty();
+      boolean hasInitToken = initToken != null;
+      if (hasInitToken || hasCredential) {
+        LOG.warn(
+            "Iceberg REST client is missing the OAuth2 server URI configuration and defaults to {}{}. "
+                + "This automatic fallback will be removed in a future Iceberg release."
+                + "It is recommended to configure the OAuth2 endpoint using the '{}' property to be prepared. "
+                + "This warning will disappear if the OAuth2 endpoint is explicitly configured. "
+                + "See https://github.com/apache/iceberg/issues/10537",
+            properties.get(CatalogProperties.URI),
+            ResourcePaths.tokens(),
+            OAuth2Properties.OAUTH2_SERVER_URI);
+      }
     }
   }
 
-  private static AuthConfig createConfig(Map<String, String> props) {
-    String scope = props.getOrDefault(OAuth2Properties.SCOPE, OAuth2Properties.CATALOG_SCOPE);
-    Map<String, String> optionalOAuthParams = OAuth2Util.buildOptionalParam(props);
+  private static boolean usesDeprecatedTokenEndpoint(Map<String, String> properties) {
+    if (properties.containsKey(OAuth2Properties.OAUTH2_SERVER_URI)) {
+      String oauth2ServerUri = properties.get(OAuth2Properties.OAUTH2_SERVER_URI);
+      return !oauth2ServerUri.startsWith("http") // relative path
+          || oauth2ServerUri.startsWith(properties.get(CatalogProperties.URI)) // same host
+      ;
+    }
+    return true;
+  }
+
+  private static AuthConfig createConfig(Map<String, String> properties) {
+    String scope = properties.getOrDefault(OAuth2Properties.SCOPE, OAuth2Properties.CATALOG_SCOPE);
+    Map<String, String> optionalOAuthParams = OAuth2Util.buildOptionalParam(properties);
     String oauth2ServerUri =
-        props.getOrDefault(OAuth2Properties.OAUTH2_SERVER_URI, ResourcePaths.tokens());
+        properties.getOrDefault(OAuth2Properties.OAUTH2_SERVER_URI, ResourcePaths.tokens());
+    boolean externalAuth =
+        oauth2ServerUri.startsWith("http")
+            && !oauth2ServerUri.startsWith(properties.get(CatalogProperties.URI));
     boolean keepRefreshed =
         PropertyUtil.propertyAsBoolean(
-            props,
+            properties,
             OAuth2Properties.TOKEN_REFRESH_ENABLED,
             OAuth2Properties.TOKEN_REFRESH_ENABLED_DEFAULT);
     return AuthConfig.builder()
-        .credential(props.get(OAuth2Properties.CREDENTIAL))
-        .token(props.get(OAuth2Properties.TOKEN))
+        .credential(properties.get(OAuth2Properties.CREDENTIAL))
+        .token(properties.get(OAuth2Properties.TOKEN))
         .scope(scope)
         .oauth2ServerUri(oauth2ServerUri)
         .optionalOAuthParams(optionalOAuthParams)
         .keepRefreshed(keepRefreshed)
-        .expiresAtMillis(expiresAtMillis(props))
+        .expiresAtMillis(expiresAtMillis(properties))
         .build();
   }
 
