@@ -131,26 +131,27 @@ public class RESTSigV4Signer {
     newHeaders.putAll(originalHeaders.asMap());
     signedHeaders.forEach(
         (name, signedValues) -> {
-          if (originalHeaders.containsHeader(name)) {
-            List<String> originalValues = originalHeaders.allHeaderValues(name);
+          if (originalHeaders.contains(name)) {
             newHeaders.remove(name);
-            originalValues.forEach(
-                originalValue -> {
-                  // Relocate headers if there is a conflict with signed headers
-                  if (!signedValues.contains(originalValue)) {
-                    newHeaders.compute(
-                        RELOCATED_HEADER_PREFIX + name,
-                        (k, v) -> {
-                          if (v == null) {
-                            return List.of(originalValue);
-                          } else {
-                            List<String> merged = Lists.newArrayList(v);
-                            merged.add(originalValue);
-                            return List.copyOf(merged);
-                          }
-                        });
-                  }
-                });
+            originalHeaders
+                .headers(name)
+                .forEach(
+                    originalHeader -> {
+                      // Relocate headers if there is a conflict with signed headers
+                      if (!signedValues.contains(originalHeader.value())) {
+                        newHeaders.compute(
+                            RELOCATED_HEADER_PREFIX + name,
+                            (k, v) -> {
+                              if (v == null) {
+                                return List.of(originalHeader.value());
+                              } else {
+                                List<String> merged = Lists.newArrayList(v);
+                                merged.add(originalHeader.value());
+                                return List.copyOf(merged);
+                              }
+                            });
+                      }
+                    });
           }
 
           newHeaders.put(name, signedValues);

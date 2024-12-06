@@ -43,6 +43,7 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableSet;
 import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.rest.ErrorHandlers;
+import org.apache.iceberg.rest.HTTPHeaders;
 import org.apache.iceberg.rest.HTTPRequest;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTUtil;
@@ -466,7 +467,8 @@ public class OAuth2Util {
 
     @Override
     public HTTPRequest authenticate(HTTPRequest request) {
-      return request.withHeaders(request.headers().addHeadersIfAbsent(headers()));
+      return request.withHeaders(
+          request.headers().addIfAbsent(HTTPHeaders.fromSimpleMap(headers())));
     }
 
     public Map<String, String> headers() {

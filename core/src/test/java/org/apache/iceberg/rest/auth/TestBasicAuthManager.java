@@ -24,6 +24,7 @@ import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
 import java.util.Map;
 import org.apache.iceberg.rest.HTTPHeaders;
+import org.apache.iceberg.rest.HTTPHeaders.HTTPHeader;
 import org.junit.jupiter.api.Test;
 
 class TestBasicAuthManager {
@@ -59,7 +60,7 @@ class TestBasicAuthManager {
           .isNotNull()
           .asInstanceOf(type(DefaultAuthSession.class))
           .extracting(DefaultAuthSession::headers)
-          .isEqualTo(HTTPHeaders.of("Authorization", "Basic YWxpY2U6c2VjcmV0"));
+          .isEqualTo(HTTPHeaders.of(HTTPHeader.of("Authorization", "Basic YWxpY2U6c2VjcmV0")));
     }
   }
 }

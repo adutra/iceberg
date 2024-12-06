@@ -18,13 +18,13 @@
  */
 package org.apache.iceberg.rest;
 
-import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.annotation.Nullable;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableListMultimap;
+import org.apache.iceberg.relocated.com.google.common.collect.ListMultimap;
 import org.apache.iceberg.relocated.com.google.common.collect.Multimap;
 import org.immutables.value.Value;
 
@@ -36,118 +36,84 @@ public interface HTTPHeaders {
   HTTPHeaders EMPTY = ImmutableHTTPHeaders.builder().build();
 
   @Value.Parameter(order = 0)
-  Set<HTTPHeader> headers();
+  List<HTTPHeader> headers();
 
+  /**
+   * Returns a map representation of the headers where each header name is mapped to a list of its
+   * values.
+   */
   @Value.Lazy
   default Map<String, List<String>> asMap() {
-    return headers().stream().collect(Collectors.toMap(HTTPHeader::name, HTTPHeader::values));
-  }
-
-  @Value.Lazy
-  default Map<String, String> asSimpleMap() {
-    return headers().stream().collect(Collectors.toMap(HTTPHeader::name, HTTPHeader::firstValue));
-  }
-
-  @Value.Lazy
-  default Multimap<String, String> asMultiMap() {
     return headers().stream()
-        .flatMap(header -> header.values().stream().map(value -> Map.entry(header.name(), value)))
+        .collect(Collectors.groupingBy(HTTPHeader::lowerCaseName))
+        .values()
+        .stream()
         .collect(
-            ImmutableListMultimap.toImmutableListMultimap(Map.Entry::getKey, Map.Entry::getValue));
-  }
-
-  /** Returns all the header values for the given header name. */
-  default List<String> allHeaderValues(String name) {
-    return headers().stream()
-        .filter(header -> header.name().equalsIgnoreCase(name))
-        .flatMap(header -> header.values().stream())
-        .collect(Collectors.toList());
+            Collectors.toMap(
+                headers -> headers.get(0).name(),
+                header -> header.stream().map(HTTPHeader::value).collect(Collectors.toList())));
   }
 
   /**
-   * Returns the first header value for the given header name, or null if the header is not present.
+   * Returns a simple map representation of the headers where each header name is mapped to its
+   * first value. If a header has multiple values, only the first value is used.
    */
-  @Nullable
-  default String firstHeaderValue(String name) {
+  @Value.Lazy
+  default Map<String, String> asSimpleMap() {
     return headers().stream()
-        .filter(header -> header.name().equalsIgnoreCase(name))
-        .findFirst()
-        .map(header -> header.values().get(0))
-        .orElse(null);
+        .collect(Collectors.toMap(HTTPHeader::name, HTTPHeader::value, (h1, h2) -> h1));
   }
 
-  /** Returns whether the headers set contains a header with the given name. */
-  default boolean containsHeader(String name) {
+  /** Returns a {@link ListMultimap} representation of the headers. */
+  @Value.Lazy
+  default ListMultimap<String, String> asMultiMap() {
+    return headers().stream()
+        .collect(
+            ImmutableListMultimap.toImmutableListMultimap(HTTPHeader::name, HTTPHeader::value));
+  }
+
+  /** Returns all the headers for the given header name. */
+  default List<HTTPHeader> headers(String name) {
+    return headers().stream()
+        .filter(header -> header.name().equalsIgnoreCase(name))
+        .collect(Collectors.toList());
+  }
+
+  /** Returns whether the headers list contains a header with the given name. */
+  default boolean contains(String name) {
     return headers().stream().anyMatch(header -> header.name().equalsIgnoreCase(name));
   }
 
-  default HTTPHeaders addHeaderIfAbsent(String name, String value) {
-    if (!containsHeader(name)) {
-      return ImmutableHTTPHeaders.builder()
-          .from(this)
-          .addHeader(HTTPHeader.of(name, value))
-          .build();
-    }
-
-    return this;
+  /**
+   * Adds the given header to the current headers if no header with the same name is already
+   * present. Returns a new instance with the added header.
+   */
+  default HTTPHeaders addIfAbsent(HTTPHeader header) {
+    return contains(header.name())
+        ? this
+        : ImmutableHTTPHeaders.builder().from(this).addHeader(header).build();
   }
 
-  default HTTPHeaders addHeadersIfAbsent(HTTPHeaders headers) {
+  /**
+   * Adds the given headers to the current headers if no headers with the same names are already
+   * present. Returns a new instance with the added headers.
+   */
+  default HTTPHeaders addIfAbsent(HTTPHeaders headers) {
     Set<HTTPHeader> newHeaders =
-        headers.headers().stream()
-            .filter(e -> !containsHeader(e.name()))
-            .collect(Collectors.toSet());
-    if (!newHeaders.isEmpty()) {
-      return ImmutableHTTPHeaders.builder().from(this).addAllHeaders(newHeaders).build();
-    }
-
-    return this;
+        headers.headers().stream().filter(e -> !contains(e.name())).collect(Collectors.toSet());
+    return newHeaders.isEmpty()
+        ? this
+        : ImmutableHTTPHeaders.builder().from(this).addAllHeaders(newHeaders).build();
   }
 
-  default HTTPHeaders addHeadersIfAbsent(Map<String, String> headers) {
-    Set<HTTPHeader> newHeaders =
-        headers.entrySet().stream()
-            .filter(e -> !containsHeader(e.getKey()))
-            .map(e -> HTTPHeader.of(e.getKey(), e.getValue()))
-            .collect(Collectors.toSet());
-    if (!newHeaders.isEmpty()) {
-      return ImmutableHTTPHeaders.builder().from(this).addAllHeaders(newHeaders).build();
-    }
-
-    return this;
+  static HTTPHeaders of(HTTPHeader... headers) {
+    return ImmutableHTTPHeaders.builder().addHeaders(headers).build();
   }
 
-  @Value.Check
-  default HTTPHeaders normalize() {
-    if (headers().stream().map(header -> header.name().toLowerCase()).distinct().count()
-        != headers().size()) {
-      return ImmutableHTTPHeaders.of(
-          headers().stream()
-              .collect(Collectors.groupingBy(header -> header.name().toLowerCase()))
-              .values()
-              .stream()
-              .map(
-                  headers -> {
-                    String name = headers.get(0).name();
-                    List<String> values =
-                        headers.stream()
-                            .flatMap(header -> header.values().stream())
-                            .collect(Collectors.toList());
-                    return HTTPHeader.of(name, values);
-                  })
-              .collect(Collectors.toSet()));
-    }
-
-    return this;
-  }
-
-  static HTTPHeaders of(String name, String value) {
-    return ImmutableHTTPHeaders.builder().addHeader(HTTPHeader.of(name, value)).build();
-  }
-
-  static HTTPHeaders fromMap(Map<String, ? extends Collection<String>> headers) {
+  static HTTPHeaders fromMap(Map<String, ? extends Iterable<String>> headers) {
     ImmutableHTTPHeaders.Builder builder = ImmutableHTTPHeaders.builder();
-    headers.forEach((name, values) -> builder.addHeader(HTTPHeader.of(name, List.copyOf(values))));
+    headers.forEach(
+        (name, values) -> values.forEach(value -> builder.addHeader(HTTPHeader.of(name, value))));
     return builder.build();
   }
 
@@ -171,30 +137,15 @@ public interface HTTPHeaders {
 
     @Value.Parameter(order = 1)
     @Value.Redacted
-    List<String> values();
+    String value();
 
-    default String firstValue() {
-      return values().get(0);
-    }
-
-    @Value.Check
-    default void check() {
-      // While it is technically valid to have a header with no values, we do not allow it
-      // as it is not useful in practice and can lead to bugs.
-      if (values().isEmpty()) {
-        throw new IllegalArgumentException("Header values cannot be empty");
-      }
-      if (values().stream().anyMatch(String::isBlank)) {
-        throw new IllegalArgumentException("Header value cannot be blank");
-      }
+    @Value.Derived
+    default String lowerCaseName() {
+      return name().toLowerCase(Locale.ROOT);
     }
 
     static HTTPHeader of(String name, String value) {
-      return of(name, List.of(value));
-    }
-
-    static HTTPHeader of(String name, List<String> values) {
-      return ImmutableHTTPHeader.of(name, values);
+      return ImmutableHTTPHeader.of(name, value);
     }
   }
 }

@@ -41,7 +41,7 @@ public interface DefaultAuthSession extends AuthSession {
 
   @Override
   default HTTPRequest authenticate(HTTPRequest request) {
-    return request.withHeaders(request.headers().addHeadersIfAbsent(headers()));
+    return request.withHeaders(request.headers().addIfAbsent(headers()));
   }
 
   static DefaultAuthSession of(HTTPHeaders headers) {
