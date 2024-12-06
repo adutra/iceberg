@@ -20,10 +20,8 @@ package org.apache.iceberg.rest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
-import java.util.List;
 import java.util.Map;
 import javax.annotation.Nullable;
-import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.immutables.value.Value;
 
 /** Represents an HTTP request. */
@@ -67,19 +65,12 @@ public interface HTTPRequest {
   @Value.Parameter(order = 3)
   Map<String, String> queryParameters();
 
-  /** Returns all the headers of this request. The map is case-sensitive! */
+  /** Returns the headers of this request. */
   @Value.Parameter(order = 4)
   @Value.Redacted
-  Map<String, List<String>> headers();
-
-  /** Returns the header values of the given name. */
-  default List<String> headers(String name) {
-    return headers().getOrDefault(name, List.of());
-  }
-
-  /** Returns whether the request contains a header with the given name. */
-  default boolean containsHeader(String name) {
-    return !headers(name).isEmpty();
+  @Value.Default
+  default HTTPHeaders headers() {
+    return HTTPHeaders.EMPTY;
   }
 
   /** Returns the raw, unencoded request body. */
@@ -113,13 +104,7 @@ public interface HTTPRequest {
 
   HTTPRequest withQueryParameters(Map<String, ? extends String> queryParameters);
 
-  HTTPRequest withHeaders(Map<String, ? extends List<String>> headers);
+  HTTPRequest withHeaders(HTTPHeaders headers);
 
   HTTPRequest withBody(Object body);
-
-  default HTTPRequest putHeadersIfAbsent(Map<String, String> headers) {
-    Map<String, List<String>> newHeaders = Maps.newLinkedHashMap(headers());
-    headers.forEach((name, value) -> newHeaders.putIfAbsent(name, List.of(value)));
-    return withHeaders(newHeaders);
-  }
 }

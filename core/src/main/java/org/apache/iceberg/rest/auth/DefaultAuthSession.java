@@ -19,6 +19,7 @@
 package org.apache.iceberg.rest.auth;
 
 import java.util.Map;
+import org.apache.iceberg.rest.HTTPHeaders;
 import org.apache.iceberg.rest.HTTPRequest;
 import org.immutables.value.Value;
 
@@ -36,18 +37,18 @@ public interface DefaultAuthSession extends AuthSession {
 
   /** Headers containing authentication data to set on the request. */
   @Value.Redacted
-  Map<String, String> headers();
+  HTTPHeaders headers();
 
   @Override
   default HTTPRequest authenticate(HTTPRequest request) {
-    return request.putHeadersIfAbsent(headers());
+    return request.withHeaders(request.headers().addHeadersIfAbsent(headers()));
   }
 
-  static DefaultAuthSession of(String name, String value) {
-    return ImmutableDefaultAuthSession.builder().putHeaders(name, value).build();
+  static DefaultAuthSession of(HTTPHeaders headers) {
+    return ImmutableDefaultAuthSession.builder().headers(headers).build();
   }
 
-  static DefaultAuthSession of(Map<String, String> authHeaders) {
-    return ImmutableDefaultAuthSession.builder().putAllHeaders(authHeaders).build();
+  static DefaultAuthSession fromSimpleMap(Map<String, String> headers) {
+    return of(HTTPHeaders.fromSimpleMap(headers));
   }
 }

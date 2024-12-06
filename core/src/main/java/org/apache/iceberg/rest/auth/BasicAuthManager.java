@@ -38,6 +38,6 @@ public final class BasicAuthManager implements AuthManager {
     String username = properties.get(AuthProperties.BASIC_USERNAME);
     String password = properties.get(AuthProperties.BASIC_PASSWORD);
     String credentials = username + ":" + password;
-    return DefaultAuthSession.of(OAuth2Util.basicAuthHeaders(credentials));
+    return DefaultAuthSession.fromSimpleMap(OAuth2Util.basicAuthHeaders(credentials));
   }
 }

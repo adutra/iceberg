@@ -41,7 +41,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTransaction;
 import org.apache.iceberg.CatalogProperties;
@@ -120,10 +119,10 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         "in-memory",
         ImmutableMap.of(CatalogProperties.WAREHOUSE_LOCATION, warehouse.getAbsolutePath()));
 
-    Map<String, List<String>> catalogHeaders =
-        ImmutableMap.of("Authorization", List.of("Bearer client-credentials-token:sub=catalog"));
-    Map<String, List<String>> contextHeaders =
-        ImmutableMap.of("Authorization", List.of("Bearer client-credentials-token:sub=user"));
+    Map<String, String> catalogHeaders =
+        ImmutableMap.of("Authorization", "Bearer client-credentials-token:sub=catalog");
+    Map<String, String> contextHeaders =
+        ImmutableMap.of("Authorization", "Bearer client-credentials-token:sub=user");
 
     RESTCatalogAdapter adaptor =
         new RESTCatalogAdapter(backendCatalog) {
@@ -137,9 +136,9 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
             // different method calls
             if (!"v1/oauth/tokens".equals(request.path())) {
               if ("v1/config".equals(request.path())) {
-                assertThat(request.headers()).containsAllEntriesOf(catalogHeaders);
+                assertThat(request.headers().asSimpleMap()).containsAllEntriesOf(catalogHeaders);
               } else {
-                assertThat(request.headers()).containsAllEntriesOf(contextHeaders);
+                assertThat(request.headers().asSimpleMap()).containsAllEntriesOf(contextHeaders);
               }
             }
             Object body = roundTripSerialize(request.body(), "request");
@@ -2497,7 +2496,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         req ->
             req.method() == method
                 && req.path().equals(path)
-                && req.headers().equals(toMultiMap(headers)));
+                && req.headers().asSimpleMap().equals(headers));
   }
 
   static HTTPRequest reqMatcher(
@@ -2506,7 +2505,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         req ->
             req.method() == method
                 && req.path().equals(path)
-                && req.headers().equals(toMultiMap(headers))
+                && req.headers().asSimpleMap().equals(headers)
                 && req.queryParameters().equals(parameters));
   }
 
@@ -2520,7 +2519,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
         req ->
             req.method() == method
                 && req.path().equals(path)
-                && req.headers().equals(toMultiMap(headers))
+                && req.headers().asSimpleMap().equals(headers)
                 && req.queryParameters().equals(parameters)
                 && Objects.equals(req.body(), body));
   }
@@ -2529,10 +2528,5 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
     ArgumentCaptor<HTTPRequest> captor = ArgumentCaptor.forClass(HTTPRequest.class);
     verify(adapter, atLeastOnce()).execute(captor.capture(), any(), any(), any());
     return captor.getAllValues();
-  }
-
-  private static Map<String, List<String>> toMultiMap(Map<String, String> map) {
-    return map.entrySet().stream()
-        .collect(Collectors.toMap(Map.Entry::getKey, e -> List.of(e.getValue())));
   }
 }

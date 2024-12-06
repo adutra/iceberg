@@ -258,7 +258,7 @@ public class HTTPClient implements RESTClient {
       baseHeaders.forEach((name, value) -> allHeaders.putIfAbsent(name, List.of(value)));
     }
 
-    return authSession.authenticate(builder.headers(allHeaders).build());
+    return authSession.authenticate(builder.headers(HTTPHeaders.fromMap(allHeaders)).build());
   }
 
   private <T extends RESTResponse> T execute(
@@ -268,8 +268,7 @@ public class HTTPClient implements RESTClient {
       Consumer<Map<String, String>> responseHeaders) {
     HttpUriRequestBase request = new HttpUriRequestBase(req.method().name(), req.requestUri());
 
-    req.headers()
-        .forEach((name, values) -> values.forEach(value -> request.addHeader(name, value)));
+    req.headers().asMultiMap().forEach(request::addHeader);
 
     String encodedBody = req.encodedBody();
     if (encodedBody != null) {

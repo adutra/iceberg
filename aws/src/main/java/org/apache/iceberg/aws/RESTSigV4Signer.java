@@ -26,6 +26,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.hc.core5.http.HttpHeaders;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
+import org.apache.iceberg.rest.HTTPHeaders;
 import org.apache.iceberg.rest.HTTPRequest;
 import org.apache.iceberg.rest.ImmutableHTTPRequest;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -98,39 +99,40 @@ public class RESTSigV4Signer {
     }
 
     SdkHttpFullRequest signedSdkRequest = signer.sign(sdkRequestBuilder.build(), params);
-    Map<String, List<String>> newHeaders =
-        updateRequestHeaders(request, signedSdkRequest.headers());
+    HTTPHeaders newHeaders = updateRequestHeaders(request.headers(), signedSdkRequest.headers());
     return ImmutableHTTPRequest.builder().from(request).headers(newHeaders).build();
   }
 
-  private Map<String, List<String>> convertHeaders(Map<String, List<String>> headers) {
+  private Map<String, List<String>> convertHeaders(HTTPHeaders headers) {
     Map<String, List<String>> converted = Maps.newHashMap();
-    headers.forEach(
-        (name, values) -> {
-          if (name.equals(HttpHeaders.AUTHORIZATION)) {
-            converted.merge(
-                RELOCATED_HEADER_PREFIX + name,
-                values,
-                (v1, v2) -> {
-                  List<String> merged = Lists.newArrayList(v1);
-                  merged.addAll(v2);
-                  return List.copyOf(merged);
-                });
-          } else {
-            converted.put(name, values);
-          }
-        });
+    headers
+        .asMap()
+        .forEach(
+            (name, values) -> {
+              if (name.equals(HttpHeaders.AUTHORIZATION)) {
+                converted.merge(
+                    RELOCATED_HEADER_PREFIX + name,
+                    values,
+                    (v1, v2) -> {
+                      List<String> merged = Lists.newArrayList(v1);
+                      merged.addAll(v2);
+                      return List.copyOf(merged);
+                    });
+              } else {
+                converted.put(name, values);
+              }
+            });
     return converted;
   }
 
-  private Map<String, List<String>> updateRequestHeaders(
-      HTTPRequest request, Map<String, List<String>> signedHeaders) {
+  private HTTPHeaders updateRequestHeaders(
+      HTTPHeaders originalHeaders, Map<String, List<String>> signedHeaders) {
     Map<String, List<String>> newHeaders = Maps.newLinkedHashMap();
-    newHeaders.putAll(request.headers());
+    newHeaders.putAll(originalHeaders.asMap());
     signedHeaders.forEach(
         (name, signedValues) -> {
-          if (request.containsHeader(name)) {
-            List<String> originalValues = request.headers(name);
+          if (originalHeaders.containsHeader(name)) {
+            List<String> originalValues = originalHeaders.allHeaderValues(name);
             newHeaders.remove(name);
             originalValues.forEach(
                 originalValue -> {
@@ -153,6 +155,6 @@ public class RESTSigV4Signer {
 
           newHeaders.put(name, signedValues);
         });
-    return newHeaders;
+    return HTTPHeaders.fromMap(newHeaders);
   }
 }

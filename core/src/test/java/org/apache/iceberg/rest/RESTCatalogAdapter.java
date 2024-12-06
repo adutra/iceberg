@@ -576,7 +576,7 @@ public class RESTCatalogAdapter implements RESTClient {
     }
 
     if (headers != null) {
-      headers.forEach((name, value) -> builder.putHeader(name, List.of(value)));
+      builder.headers(HTTPHeaders.fromSimpleMap(headers));
     }
 
     return authSession.authenticate(builder.build());
