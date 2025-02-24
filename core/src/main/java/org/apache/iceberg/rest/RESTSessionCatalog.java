@@ -320,7 +320,7 @@ public class RESTSessionCatalog extends BaseViewSessionCatalog
           pageSize > 0, "Invalid value for %s, must be a positive integer", REST_PAGE_SIZE);
     }
 
-    this.io = newFileIO(SessionContext.createEmpty(), mergedProps);
+    this.io = newFileIO(SessionContext.EMPTY, mergedProps);
 
     this.fileIOTracker = new FileIOTracker();
     this.closeables = new CloseableGroup();

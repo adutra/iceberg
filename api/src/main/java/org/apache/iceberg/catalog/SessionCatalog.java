@@ -21,7 +21,6 @@ package org.apache.iceberg.catalog;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -34,15 +33,19 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 public interface SessionCatalog {
   /** Context for a session. */
   final class SessionContext {
+
+    public static final SessionContext EMPTY =
+        new SessionContext(
+            "SessionCatalog.SessionContext.EMPTY",
+            null,
+            null,
+            ImmutableMap.of());
+
     private final String sessionId;
     private final String identity;
     private final Map<String, String> credentials;
     private final Map<String, String> properties;
     private final Object wrappedIdentity;
-
-    public static SessionContext createEmpty() {
-      return new SessionContext(UUID.randomUUID().toString(), null, null, ImmutableMap.of());
-    }
 
     public SessionContext(
         String sessionId,

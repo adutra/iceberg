@@ -131,6 +131,10 @@ public class OAuth2Manager extends RefreshingAuthManager {
   @Override
   public OAuth2Util.AuthSession contextualSession(
       SessionCatalog.SessionContext context, AuthSession parent) {
+    if (context == SessionCatalog.SessionContext.EMPTY) {
+      return (OAuth2Util.AuthSession) parent;
+    }
+
     return maybeCreateChildSession(
         context.credentials(),
         context.properties(),

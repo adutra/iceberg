@@ -161,8 +161,7 @@ public class TestRESTViewCatalog extends ViewCatalogTests<RESTCatalog> {
   @ValueSource(ints = {21, 30})
   public void testPaginationForListViews(int numberOfItems) {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize("test", ImmutableMap.of(RESTSessionCatalog.REST_PAGE_SIZE, "10"));
 
     String namespaceName = "newdb";
@@ -222,8 +221,7 @@ public class TestRESTViewCatalog extends ViewCatalogTests<RESTCatalog> {
   @Test
   public void viewExistsViaHEADRequest() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize("test", ImmutableMap.of());
 
     catalog.createNamespace(Namespace.of("ns"));
@@ -272,8 +270,7 @@ public class TestRESTViewCatalog extends ViewCatalogTests<RESTCatalog> {
               }
             });
 
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize("test", catalogProperties);
     assertThat(catalog.viewExists(TableIdentifier.of("ns", "view"))).isFalse();
 

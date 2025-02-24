@@ -328,8 +328,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
 
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
 
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize(
         "prod", ImmutableMap.of(CatalogProperties.URI, "ignored", "token", "bearer-token"));
 
@@ -358,8 +357,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
 
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
 
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize(
         "prod", ImmutableMap.of(CatalogProperties.URI, "ignored", "credential", "catalog:secret"));
 
@@ -397,8 +395,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
 
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
 
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize(
         "prod",
         ImmutableMap.of(
@@ -847,8 +844,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   public void testTableSnapshotLoading() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
 
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize(
         "test",
         ImmutableMap.of(
@@ -944,8 +940,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   public void testTableSnapshotLoadingWithDivergedBranches(String formatVersion) {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
 
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize(
         "test",
         ImmutableMap.of(
@@ -1077,8 +1072,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   public void lazySnapshotLoadingWithDivergedHistory() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
 
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize(
         "test",
         ImmutableMap.of(
@@ -2110,8 +2104,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   @Test
   public void testInvalidPageSize() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     assertThatThrownBy(
             () ->
                 catalog.initialize(
@@ -2127,8 +2120,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   @ValueSource(ints = {21, 30})
   public void testPaginationForListNamespaces(int numberOfItems) {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize("test", ImmutableMap.of(RESTSessionCatalog.REST_PAGE_SIZE, "10"));
     String namespaceName = "newdb";
 
@@ -2183,8 +2175,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   @ValueSource(ints = {21, 30})
   public void testPaginationForListTables(int numberOfItems) {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize("test", ImmutableMap.of(RESTSessionCatalog.REST_PAGE_SIZE, "10"));
     String namespaceName = "newdb";
     String tableName = "newtable";
@@ -2486,8 +2477,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   @Test
   public void testNamespaceExistsViaHEADRequest() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize("test", ImmutableMap.of());
 
     assertThat(catalog.namespaceExists(Namespace.of("non-existing"))).isFalse();
@@ -2534,8 +2524,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
               }
             });
 
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize("test", ImmutableMap.of());
 
     assertThat(catalog.namespaceExists(Namespace.of("non-existing"))).isFalse();
@@ -2566,8 +2555,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   @Test
   public void testTableExistsViaHEADRequest() {
     RESTCatalogAdapter adapter = Mockito.spy(new RESTCatalogAdapter(backendCatalog));
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize("test", ImmutableMap.of());
 
     assertThat(catalog.tableExists(TABLE)).isFalse();
@@ -2612,8 +2600,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
               }
             });
 
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize("test", ImmutableMap.of());
 
     assertThat(catalog.tableExists(TABLE)).isFalse();
@@ -2646,8 +2633,7 @@ public class TestRESTCatalog extends CatalogTests<RESTCatalog> {
   }
 
   private RESTCatalog catalog(RESTCatalogAdapter adapter) {
-    RESTCatalog catalog =
-        new RESTCatalog(SessionCatalog.SessionContext.createEmpty(), (config) -> adapter);
+    RESTCatalog catalog = new RESTCatalog(SessionCatalog.SessionContext.EMPTY, (config) -> adapter);
     catalog.initialize(
         "test",
         ImmutableMap.of(

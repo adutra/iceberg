@@ -54,12 +54,12 @@ public class RESTCatalog
 
   public RESTCatalog() {
     this(
-        SessionCatalog.SessionContext.createEmpty(),
+        SessionCatalog.SessionContext.EMPTY,
         config -> HTTPClient.builder(config).uri(config.get(CatalogProperties.URI)).build());
   }
 
   public RESTCatalog(Function<Map<String, String>, RESTClient> clientBuilder) {
-    this(SessionCatalog.SessionContext.createEmpty(), clientBuilder);
+    this(SessionCatalog.SessionContext.EMPTY, clientBuilder);
   }
 
   public RESTCatalog(

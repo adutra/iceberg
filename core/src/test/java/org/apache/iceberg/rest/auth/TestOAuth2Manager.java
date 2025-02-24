@@ -209,12 +209,11 @@ class TestOAuth2Manager {
 
   @Test
   void contextualSessionEmptyContext() {
-    SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
     Map<String, String> properties = Map.of();
     try (OAuth2Manager manager = new OAuth2Manager("test");
         OAuth2Util.AuthSession catalogSession = manager.catalogSession(client, properties);
         OAuth2Util.AuthSession contextualSession =
-            manager.contextualSession(context, catalogSession)) {
+            manager.contextualSession(SessionCatalog.SessionContext.EMPTY, catalogSession)) {
       assertThat(contextualSession).isSameAs(catalogSession);
       assertThat(manager)
           .extracting("refreshExecutor")
