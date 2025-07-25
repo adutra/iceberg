@@ -17,7 +17,9 @@
  * under the License.
  */
 
+
 import groovy.transform.Memoized
+
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
@@ -93,7 +95,7 @@ gitProperties {
   gitPropertiesResourceDir = file("${rootDir}/build")
   extProperty = 'gitProps'
   failOnNoGitDirectory = true
-  keys = ['git.branch', 'git.build.version', 'git.closest.tag.name','git.commit.id.abbrev', 'git.commit.id',
+  keys = ['git.branch', 'git.build.version', 'git.closest.tag.name', 'git.commit.id.abbrev', 'git.commit.id',
           'git.commit.message.short', 'git.commit.time', 'git.tags']
   version = projectVersion
 }
@@ -142,11 +144,11 @@ subprojects {
     tasks.register('showDeprecationRulesOnRevApiFailure') {
       doLast {
         throw new RuntimeException("==================================================================================" +
-                "\nAPI/ABI breaks detected.\n" +
-                "Adding RevAPI breaks should only be done after going through a deprecation cycle." +
-                "\nPlease make sure to follow the deprecation rules defined in\n" +
-                "https://github.com/apache/iceberg/blob/main/CONTRIBUTING.md#semantic-versioning.\n" +
-                "==================================================================================")
+            "\nAPI/ABI breaks detected.\n" +
+            "Adding RevAPI breaks should only be done after going through a deprecation cycle." +
+            "\nPlease make sure to follow the deprecation rules defined in\n" +
+            "https://github.com/apache/iceberg/blob/main/CONTRIBUTING.md#semantic-versioning.\n" +
+            "==================================================================================")
       }
       onlyIf {
         tasks.revapi.state.failure != null
@@ -158,7 +160,7 @@ subprojects {
         rootTask.finalizedBy showDeprecationRulesOnRevApiFailure
       }
     }
-    
+
     tasks.named("revapiAnalyze").configure {
       dependsOn(":iceberg-common:jar")
     }
@@ -217,10 +219,11 @@ subprojects {
     def buildLog = new File(logFile)
     addTestOutputListener(new TestOutputListener() {
       def lastDescriptor
+
       @Override
       void onOutput(TestDescriptor testDescriptor, TestOutputEvent testOutputEvent) {
         if (lastDescriptor != testDescriptor) {
-          buildLog << "--------\n- Test log for: "<< testDescriptor << "\n--------\n"
+          buildLog << "--------\n- Test log for: " << testDescriptor << "\n--------\n"
           lastDescriptor = testDescriptor
         }
         buildLog << testOutputEvent.destination << " " << testOutputEvent.message
@@ -342,9 +345,58 @@ project(':iceberg-common') {
 }
 
 project(':iceberg-core') {
+  apply plugin: 'java-test-fixtures'
+  apply plugin: 'jvm-test-suite'
+
   test {
     useJUnitPlatform()
   }
+
+  testing {
+    suites {
+      intTest(JvmTestSuite) {
+        useJUnitJupiter()
+        dependencies {
+          implementation project()
+          implementation testFixtures(project())
+        }
+        check.dependsOn intTest
+        targets {
+          all {
+            testTask.configure {
+              shouldRunAfter(test)
+              mustRunAfter(test)
+            }
+          }
+        }
+      }
+      stressTest(JvmTestSuite) {
+        useJUnitJupiter()
+        dependencies {
+          implementation project()
+          implementation testFixtures(project())
+        }
+        targets {
+          all {
+            testTask.configure {
+              shouldRunAfter(intTest)
+              mustRunAfter(intTest)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  configurations {
+    docs {
+      description = 'Dependencies for generating configuration documentation'
+      canBeResolved = true
+      canBeConsumed = false
+      visible = false
+    }
+  }
+
   dependencies {
     api project(':iceberg-api')
     implementation project(':iceberg-common')
@@ -369,6 +421,11 @@ project(':iceberg-core') {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     }
 
+    // OAuth2
+    implementation libs.nimbus.oauth2.oidc.sdk
+    implementation libs.nimbus.jose.jwt
+    compileOnly libs.bouncycastle.bcpkix
+
     testImplementation libs.jetty.servlet
     testImplementation libs.jakarta.servlet
     testImplementation libs.jetty.server
@@ -383,6 +440,67 @@ project(':iceberg-core') {
       exclude group: 'junit'
     }
     testImplementation libs.awaitility
+
+    testFixturesApi libs.junit.jupiter
+    testFixturesApi libs.junit.pioneer
+    testFixturesApi libs.assertj.core
+    testFixturesApi libs.mockito.core
+
+    testFixturesApi libs.httpcomponents.httpclient5
+    testFixturesApi libs.nimbus.oauth2.oidc.sdk
+    testFixturesApi libs.nimbus.jose.jwt
+    testFixturesApi libs.bouncycastle.bcpkix
+
+    testFixturesApi libs.mockserver.netty
+    testFixturesApi libs.mockserver.client.java
+
+    testFixturesApi libs.testcontainers
+    testFixturesApi libs.testcontainers.junit.jupiter
+    testFixturesApi libs.testcontainers.keycloak
+
+    testFixturesApi libs.keycloak.admin.client
+
+    testFixturesImplementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
+
+    testFixturesAnnotationProcessor libs.immutables.value
+    testFixturesCompileOnly libs.immutables.value
+
+    docs 'com.thoughtworks.qdox:qdox:2.2.0'
+    docs project(path: ':iceberg-bundled-guava', configuration: 'shadow')
+  }
+
+  sourceSets {
+    docs {
+      java {
+        srcDir 'src/docs/java'
+      }
+      resources {
+        srcDir 'src/docs/resources'
+      }
+      compileClasspath += configurations.docs
+      runtimeClasspath += configurations.docs
+    }
+  }
+
+  tasks.named('processDocsResources', ProcessResources).configure {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+  }
+
+  tasks.register('generateOAuth2Docs', JavaExec) {
+    group = 'documentation'
+    description = 'Generates REST OAuth2 configuration documentation from OAuth2Config'
+    mainClass.set('org.apache.iceberg.rest.auth.oauth2.docs.OAuth2DocumentationGenerator')
+    classpath = sourceSets.docs.runtimeClasspath
+
+    def inputFile = project.file('src/main/java/org/apache/iceberg/rest/auth/oauth2/OAuth2Config.java')
+    def outputFile = rootProject.file('docs/docs/oauth2-configuration.md')
+
+    inputs.files(inputFile)
+    outputs.file(outputFile)
+
+    args(inputFile.absolutePath, outputFile.absolutePath)
+
+    doFirst { outputFile.parentFile.mkdirs() }
   }
 }
 
@@ -1085,15 +1203,15 @@ project(':iceberg-open-api') {
     useJUnitPlatform()
 
     // Always rerun the compatibility tests
-    outputs.upToDateWhen {false}
+    outputs.upToDateWhen { false }
     maxParallelForks = 1
 
     // Pass through any system properties that start with "rck" (REST Compatibility Kit)
     // Note: only pass through specific properties so they do not affect other build/test
     //       configurations
     systemProperties System.properties
-            .findAll { k, v -> k.startsWith("rck") }
-            .collectEntries { k, v -> { [(k):v, (k.replaceFirst("rck.", "")):v] }} // strip prefix
+        .findAll { k, v -> k.startsWith("rck") }
+        .collectEntries { k, v -> { [(k): v, (k.replaceFirst("rck.", "")): v] } } // strip prefix
   }
 
   def restCatalogSpec = "$projectDir/rest-catalog-open-api.yaml"
@@ -1185,8 +1303,8 @@ project(':iceberg-bom') {
       // the BOM references the artifacts for all Scala versions.
       def sparkScalaPattern = ~"(.*)-([0-9][.][0-9]+)_([0-9][.][0-9]+)"
       def sparkScalaVersions = [
-        "3.4": ["2.12", "2.13"],
-        "3.5": ["2.12", "2.13"],
+          "3.4": ["2.12", "2.13"],
+          "3.5": ["2.12", "2.13"],
       ]
       rootProject.allprojects.forEach {
         // Do not include ':iceberg-spark', the bom itself and the root project.

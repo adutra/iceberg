@@ -1,0 +1,527 @@
+<!--
+ - Licensed to the Apache Software Foundation (ASF) under one or more
+ - contributor license agreements.  See the NOTICE file distributed with
+ - this work for additional information regarding copyright ownership.
+ - The ASF licenses this file to You under the Apache License, Version 2.0
+ - (the "License"); you may not use this file except in compliance with
+ - the License.  You may obtain a copy of the License at
+ -
+ -   http://www.apache.org/licenses/LICENSE-2.0
+ -
+ - Unless required by applicable law or agreed to in writing, software
+ - distributed under the License is distributed on an "AS IS" BASIS,
+ - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ - See the License for the specific language governing permissions and
+ - limitations under the License.
+ -->
+
+<!--
+This page is automatically generated from the code. Do not edit it manually.
+To update this page, run: `./gradlew :iceberg-core:generateOAuth2Docs`.
+-->
+
+# REST OAuth2 Configuration
+
+## Basic Settings
+
+Basic OAuth2 properties. These properties are used to configure the basic OAuth2 options such as the issuer URL, token endpoint, client ID, and client secret.
+
+### `rest.auth.oauth2.token`
+
+The initial access token to use. Optional. If this is set, the OAuth2 client will not attempt to fetch an initial new token from the Authorization server, but will use this token instead.
+
+This option should be avoided as in most cases, the token cannot be refreshed.
+
+### `rest.auth.oauth2.issuer-url`
+
+The root URL of the Authorization server, which will be used for discovering supported endpoints and their locations. For Keycloak, this is typically the realm URL: `https://<keycloak-server>/realms/<realm-name>`.
+
+Two "well-known" paths are supported for endpoint discovery: `.well-known/openid-configuration` and `.well-known/oauth-authorization-server`. The full metadata discovery URL will be constructed by appending these paths to the issuer URL.
+
+Either this property or `rest.auth.oauth2.token-endpoint` must be set.
+
+### `rest.auth.oauth2.token-endpoint`
+
+URL of the OAuth2 token endpoint. For Keycloak, this is typically `https://<keycloak-server>/realms/<realm-name>/protocol/openid-connect/token`.
+
+Either this property or `rest.auth.oauth2.issuer-url` must be set. In case it is not set, the token endpoint will be discovered from the issuer URL (`rest.auth.oauth2.issuer-url`), using the OpenID Connect Discovery metadata published by the issuer.
+
+### `rest.auth.oauth2.grant-type`
+
+The grant type to use when authenticating against the OAuth2 server. Valid values are:
+
+- `client_credentials`
+- `password`
+- `authorization_code`
+- `urn:ietf:params:oauth:grant-type:device_code`
+- `urn:ietf:params:oauth:grant-type:token-exchange`
+
+Optional, defaults to `GrantType.CLIENT_CREDENTIALS`.
+
+### `rest.auth.oauth2.client-id`
+
+Client ID to use when authenticating against the OAuth2 server. Required, unless a static token (`rest.auth.oauth2.token`) is provided.
+
+### `rest.auth.oauth2.client-auth`
+
+The OAuth2 client authentication method to use. Valid values are:
+
+- `none`: the client does not authenticate itself at the token endpoint, because it is a public client with no client secret or other authentication mechanism.
+- `client_secret_basic`: client secret is sent in the HTTP Basic Authorization header.
+- `client_secret_post`: client secret is sent in the request body as a form parameter.
+- `client_secret_jwt`: client secret is used to sign a JWT token.
+- `private_key_jwt`: client authenticates with a JWT assertion signed with a private key.
+
+The default is `ClientAuthenticationMethod.CLIENT_SECRET_BASIC`.
+
+### `rest.auth.oauth2.client-secret`
+
+Client secret to use when authenticating against the OAuth2 server. Required if the client is private and is authenticated using the standard "client-secret" methods. If other authentication methods are used (e.g. `private_key_jwt`), this property is ignored.
+
+### `rest.auth.oauth2.scope`
+
+Space-separated list of scopes to include in each request to the OAuth2 server. Optional, defaults to empty (no scopes).
+
+The scope names will not be validated by the OAuth2 client; make sure they are valid according to [RFC 6749 Section 3.3](https://datatracker.ietf.org/doc/html/rfc6749#section-3.3).
+
+### `rest.auth.oauth2.extra-params.*`
+
+Extra parameters to include in each request to the token and device authorization endpoints. This is useful for custom parameters that are not covered by the standard OAuth2.0 specification. Optional, defaults to empty.
+
+This is a prefix property, and multiple values can be set, each with a different key and value. The values must NOT be URL-encoded. Example:
+
+```
+rest.auth.oauth2.extra-params.custom_param1=custom_value1"
+rest.auth.oauth2.extra-params.custom_param2=custom_value2"
+```
+
+For example, Auth0 requires the `audience` parameter to be set to the API identifier. This can be done by setting the following configuration:
+
+```
+rest.auth.oauth2.extra-params.audience=https://iceberg-rest-catalog/api
+```
+
+### `rest.auth.oauth2.timeout`
+
+Defines how long the OAuth2 client should wait for tokens to be acquired. Optional, defaults to `Duration.ofMinutes(5)`.
+
+Must be a valid [ISO-8601 duration](https://en.wikipedia.org/wiki/ISO_8601#Durations).
+
+### `rest.auth.oauth2.session-cache-timeout`
+
+The session cache timeout. Cached sessions will become eligible for eviction after this duration of inactivity. Defaults to 1 hour. Must be a valid [ISO-8601 duration](https://en.wikipedia.org/wiki/ISO_8601#Durations).
+
+This value is used for housekeeping; it does not mean that cached sessions will stop working after this time, but that the session cache will evict the session after this time of inactivity. If the context is used again, a new session will be created and cached.
+
+## Token Refresh Settings
+
+Configuration properties for the token refresh feature.
+
+### `rest.auth.oauth2.token-refresh.enabled`
+
+Whether to enable token refresh. If enabled, the OAuth2 client will automatically refresh its access token when it expires. If disabled, the OAuth2 client will only fetch the initial access token, but won't refresh it. Defaults to `true`.
+
+### `rest.auth.oauth2.token-refresh.grant-type`
+
+The grant type to use when refreshing the access token. Valid values are:
+
+- `refresh_token`: uses the refresh token to obtain a new access token.
+- `urn:ietf:params:oauth:grant-type:token-exchange`: uses the token exchange grant type to obtain a new access token.
+
+Optional, defaults to `urn:ietf:params:oauth:grant-type:token-exchange` for backwards compatibility reasons. When using strict OAuth2 providers, this grant type may not be supported, in which case the `refresh_token` grant type should be selected instead.
+
+### `rest.auth.oauth2.token-refresh.access-token-lifespan`
+
+Default access token lifespan; if the OAuth2 server returns an access token without specifying its expiration time, this value will be used. Note that when this happens, a warning will be logged.
+
+Optional, defaults to `Duration.ofMinutes(5)`. Must be a valid [ISO-8601 duration](https://en.wikipedia.org/wiki/ISO_8601#Durations).
+
+### `rest.auth.oauth2.token-refresh.safety-margin`
+
+Refresh safety margin to use; a new token will be fetched when the current token's remaining lifespan is less than this value. Optional, defaults to `Duration.ofSeconds(10)`. Must be a valid [ISO-8601 duration](https://en.wikipedia.org/wiki/ISO_8601#Durations).
+
+### `rest.auth.oauth2.token-refresh.idle-timeout`
+
+Defines for how long the OAuth2 client should keep the tokens fresh, if it is not being actively used.
+
+Setting this value too high may cause an excessive usage of network I/O and thread resources; conversely, when setting it too low, if the OAuth2 client is used again, the calling thread may block if the tokens are expired and need to be renewed synchronously.
+
+Optional, defaults to `Duration.ofSeconds(30)`. Must be a valid [ISO-8601 duration](https://en.wikipedia.org/wiki/ISO_8601#Durations).
+
+## Resource Owner Settings
+
+Configuration properties for the [Resource Owner Password Credentials Grant](https://datatracker.ietf.org/doc/html/rfc6749#section-4.3) flow.
+
+Note: according to the [OAuth 2.0 Security Best Current Practice, section 2.4](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-2.4) this flow should NOT be used anymore because it "insecurely exposes the credentials of the resource owner to the client".
+
+### `rest.auth.oauth2.resource-owner.username`
+
+Username to use when authenticating against the OAuth2 server. Required if using OAuth2 authentication and `password` grant type, ignored otherwise.
+
+### `rest.auth.oauth2.resource-owner.password`
+
+Password to use when authenticating against the OAuth2 server. Required if using OAuth2 authentication and the `password` grant type, ignored otherwise.
+
+## Authorization Code Settings
+
+Configuration properties for the [Authorization Code Grant](https://datatracker.ietf.org/doc/html/rfc6749#section-4.1) flow.
+
+This flow is used to obtain an access token by redirecting the user to the OAuth2 authorization server, where they can log in and authorize the client application to access their resources.
+
+### `rest.auth.oauth2.auth-code.endpoint`
+
+URL of the OAuth2 authorization endpoint. For Keycloak, this is typically `https://<keycloak-server>/realms/<realm-name>/protocol/openid-connect/auth`.
+
+If using the "authorization_code" grant type, either this property or `rest.auth.oauth2.issuer-url` must be set. In case it is not set, the authorization endpoint will be discovered from the issuer URL (`rest.auth.oauth2.issuer-url`), using the OpenID Connect Discovery metadata published by the issuer.
+
+### `rest.auth.oauth2.auth-code.redirect-uri`
+
+The redirect URI. This is the value of the `redirect_uri` parameter in the authorization code request.
+
+Optional; if not present, the URL will be computed from `rest.auth.oauth2.auth-code.callback.bind-host`, `rest.auth.oauth2.auth-code.callback.bind-port` and `rest.auth.oauth2.auth-code.callback.context-path`.
+
+Specifying this value is generally only necessary in containerized environments, if a reverse proxy modifies the callback before it reaches the client, or if external TLS termination is performed.
+
+### `rest.auth.oauth2.auth-code.callback.https`
+
+Whether to use HTTPS for the local web server that listens for the authorization code. The default is `false`.
+
+Ignored if `rest.auth.oauth2.auth-code.redirect-uri` is set.
+
+### `rest.auth.oauth2.auth-code.callback.bind-host`
+
+Address of the OAuth2 authorization code flow local web server.
+
+Ignored if `rest.auth.oauth2.auth-code.redirect-uri` is set.
+
+The internal web server will listen for the authorization code callback on this address. This is only used if the grant type to use is `authorization_code`.
+
+Optional; if not present, the server will listen on the loopback interface.
+
+### `rest.auth.oauth2.auth-code.callback.bind-port`
+
+Port of the OAuth2 authorization code flow local web server.
+
+Ignored if `rest.auth.oauth2.auth-code.redirect-uri` is set.
+
+The internal web server will listen for the authorization code callback on this port. This is only used if the grant type to use is `authorization_code`.
+
+Optional; if not present, a random port will be used.
+
+### `rest.auth.oauth2.auth-code.callback.context-path`
+
+Context path of the OAuth2 authorization code flow local web server.
+
+Ignored if `rest.auth.oauth2.auth-code.redirect-uri` is set.
+
+Optional; if not present, a default context path will be used.
+
+### `rest.auth.oauth2.auth-code.pkce.enabled`
+
+Whether to enable PKCE (Proof Key for Code Exchange) for the authorization code flow. The default is `true`.
+
+### `rest.auth.oauth2.auth-code.pkce.method`
+
+The PKCE code challenge method to use. The default is `CodeChallengeMethod.S256`. This is only used if PKCE is enabled.
+
+### `rest.auth.oauth2.auth-code.ssl.key-store.path`
+
+Path to the key store to use for HTTPS requests. Optional, defaults to the system key store.
+
+Ignored if `rest.auth.oauth2.auth-code.callback.https` is `false` or if `rest.auth.oauth2.auth-code.redirect-uri` is set to a non-HTTPS URL.
+
+### `rest.auth.oauth2.auth-code.ssl.key-store.password`
+
+Password for the key store to use for HTTPS requests. Optional, defaults to no password.
+
+Ignored if `rest.auth.oauth2.auth-code.callback.https` is `false` or if `rest.auth.oauth2.auth-code.redirect-uri` is set to a non-HTTPS URL.
+
+### `rest.auth.oauth2.auth-code.ssl.key-store.alias`
+
+The alias of the key to use from the key store. Optional, defaults to the first matching key in the store.
+
+Ignored if `rest.auth.oauth2.auth-code.callback.https` is `false` or if `rest.auth.oauth2.auth-code.redirect-uri` is set to a non-HTTPS URL.
+
+### `rest.auth.oauth2.auth-code.ssl.protocols`
+
+A comma-separated list of SSL protocols to use for HTTPS requests. Optional, defaults to the system protocols.
+
+Ignored if `rest.auth.oauth2.auth-code.callback.https` is `false` or if `rest.auth.oauth2.auth-code.redirect-uri` is set to a non-HTTPS URL.
+
+### `rest.auth.oauth2.auth-code.ssl.cipher-suites`
+
+A comma-separated list of SSL cipher suites to use for HTTPS requests. Optional, defaults to the system cipher suites.
+
+Ignored if `rest.auth.oauth2.auth-code.callback.https` is `false` or if `rest.auth.oauth2.auth-code.redirect-uri` is set to a non-HTTPS URL.
+
+## Device Code Settings
+
+Configuration properties for the [Device Authorization Grant](https://datatracker.ietf.org/doc/html/rfc8628) flow.
+
+This flow is used to obtain an access token for devices that do not have a browser or limited input capabilities. The user is prompted to visit a URL on another device and enter a code to authorize the device.
+
+### `rest.auth.oauth2.device-code.endpoint`
+
+URL of the OAuth2 device authorization endpoint. For Keycloak, this is typically `http://<keycloak-server>/realms/<realm-name>/protocol/openid-connect/auth/device`.
+
+If using the "Device Code" grant type, either this property or `rest.auth.oauth2.issuer-url` must be set.
+
+### `rest.auth.oauth2.device-code.poll-interval`
+
+Defines how often the OAuth2 client should poll the OAuth2 server for the device code flow to complete.
+
+Optional, defaults to `Duration.ofSeconds(5)`.
+
+Must be a valid [ISO-8601 duration](https://en.wikipedia.org/wiki/ISO_8601#Durations).
+
+## Token Exchange Settings
+
+Configuration properties for the [Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693) flow.
+
+This flow allows a client to exchange one token for another, typically to obtain a token that is more suitable for the target resource or service.
+
+See the [Token Exchange](./token-exchange.md) section for more details.
+
+### `rest.auth.oauth2.token-exchange.subject-token`
+
+The subject token to exchange.
+
+If this value is present, the subject token will be used as-is. If this value is not present, the subject token will be dynamically fetched using the configuration provided under the `rest.auth.oauth2.token-exchange.subject-token` prefix.
+
+### `rest.auth.oauth2.token-exchange.subject-token-type`
+
+The type of the subject token. Must be a valid URN. The default is `urn:ietf:params:oauth:token-type:access_token`.
+
+If the OAuth2 client is configured to dynamically fetch the subject token, this property is ignored since only access tokens can be dynamically fetched.
+
+### `rest.auth.oauth2.token-exchange.actor-token`
+
+The actor token to exchange.
+
+If this value is present, the actor token will be used as-is. If this value is not present, the actor token will be dynamically fetched using the configuration provided under the `rest.auth.oauth2.token-exchange.actor-token` prefix. If no configuration is provided, no actor token will be used.
+
+### `rest.auth.oauth2.token-exchange.actor-token-type`
+
+The type of the actor token. Must be a valid URN. The default is `urn:ietf:params:oauth:token-type:access_token`.
+
+If the OAuth2 client is configured to dynamically fetch the actor token, this property is ignored since only access tokens can be dynamically fetched.
+
+### `rest.auth.oauth2.token-exchange.requested-token-type`
+
+The type of the requested security token. Must be a valid URN. The default is `urn:ietf:params:oauth:token-type:access_token`.
+
+### `rest.auth.oauth2.token-exchange.subject-token.*`
+
+The configuration to use for fetching the subject token. Required if `rest.auth.oauth2.token-exchange.subject-token` is not set.
+
+When this set of properties is provided, a separate OAuth2 client will be created to fetch the subject token and refresh it if necessary.
+
+This is a prefix property; any property that can be set under the `rest.auth.oauth2.` prefix can also be set under this prefix.
+
+Example:
+
+```
+rest.auth.oauth2.grant-type=urn:ietf:params:oauth:grant-type:token-exchange
+rest.auth.oauth2.token-endpoint=https://main-token-endpoint.com/token
+rest.auth.oauth2.client-id=main-client-id
+rest.auth.oauth2.client-secret=main-client-secret
+rest.auth.oauth2.token-exchange.subject-token.grant-type=client_credentials
+rest.auth.oauth2.token-exchange.subject-token.token-endpoint=https://subject-token-endpoint.com/token
+rest.auth.oauth2.token-exchange.subject-token.client-id=subject-client-id
+rest.auth.oauth2.token-exchange.subject-token.client-secret=subject-client-secret
+```
+
+The above configuration will result in a token exchange where the subject token is obtained using the client credentials grant type, with specific client ID and secret, and a different token endpoint.
+
+### `rest.auth.oauth2.token-exchange.actor-token.*`
+
+The configuration to use for fetching the actor token. Optional; required only if `rest.auth.oauth2.token-exchange.actor-token` is not set but an actor token is required.
+
+When this set of properties is provided, a separate OAuth2 client will be created to fetch the actor token and refresh it if necessary.
+
+This is a prefix property; any property that can be set under the `rest.auth.oauth2.` prefix can also be set under this prefix.
+
+Example:
+
+```
+rest.auth.oauth2.grant-type=urn:ietf:params:oauth:grant-type:token-exchange
+rest.auth.oauth2.token-endpoint=https://main-token-endpoint.com/token
+rest.auth.oauth2.client-id=main-client-id
+rest.auth.oauth2.client-secret=main-client-secret
+rest.auth.oauth2.token-exchange.actor-token.grant-type=client_credentials
+rest.auth.oauth2.token-exchange.actor-token.token-endpoint=https://actor-token-endpoint.com/token
+rest.auth.oauth2.token-exchange.actor-token.client-id=actor-client-id
+rest.auth.oauth2.token-exchange.actor-token.client-secret=actor-client-secret
+```
+
+The above configuration will result in a token exchange where the actor token is obtained using the client credentials grant type, with specific client ID and secret, and a different token endpoint.
+
+### `rest.auth.oauth2.token-exchange.resource`
+
+A URI that indicates the target service or resource where the client intends to use the requested security token. Optional.
+
+### `rest.auth.oauth2.token-exchange.audiences`
+
+The logical name(s) of the target service where the client intends to use the requested security token. This serves a purpose similar to the resource parameter but with the client providing a logical name for the target service.
+
+Optional. Can be a single value or a comma-separated list of values.
+
+## Client Assertion Settings
+
+Configuration properties for JWT client assertion as specified in [JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants](https://datatracker.ietf.org/doc/html/rfc7523).
+
+These properties allow the client to authenticate using the `client_secret_jwt` or `private_key_jwt` authentication methods.
+
+### `rest.auth.oauth2.client-assertion.jwt.issuer`
+
+The issuer of the client assertion JWT. Optional. The default is the client ID.
+
+### `rest.auth.oauth2.client-assertion.jwt.subject`
+
+The subject of the client assertion JWT. Optional. The default is the client ID.
+
+### `rest.auth.oauth2.client-assertion.jwt.audiences`
+
+The audiences(s) of the client assertion JWT. Optional. The default is the token endpoint. Can be a single audiences or a comma-separated list of audiences.
+
+### `rest.auth.oauth2.client-assertion.jwt.token-lifespan`
+
+The expiration time of the client assertion JWT. Optional. The default is `Duration.ofMinutes(5)`.
+
+### `rest.auth.oauth2.client-assertion.jwt.algorithm`
+
+The signing algorithm to use for the client assertion JWT. Optional. The default is `HS512` if the authentication method is `client_secret_jwt`, or `RS512` if the authentication method is `private_key_jwt`.
+
+Algorithm names must match the "alg" Param Value as described in [RFC 7518 Section 3.1](https://datatracker.ietf.org/doc/html/rfc7518#section-3.1).
+
+### `rest.auth.oauth2.client-assertion.jwt.private-key`
+
+The path on the local filesystem to the private key to use for signing the client assertion JWT. Required if the authentication method is `private_key_jwt`.
+
+The file must be in PEM format; it may contain a private key, or a private key and a certificate chain. Only the private key is used.
+
+Supported key formats are:
+
+- RSA PKCS#8 (`BEGIN PRIVATE KEY`): always supported
+- RSA PKCS#1 (`BEGIN RSA PRIVATE KEY`): requires the BouncyCastle library
+- ECDSA (`BEGIN EC PRIVATE KEY`): requires the BouncyCastle library
+
+Only unencrypted keys are supported currently.
+
+### `rest.auth.oauth2.client-assertion.jwt.key-id`
+
+The key ID (kid) to include in the JWT header. Optional.
+
+If specified, this will be included in the "kid" header parameter of the JWT assertion. This is useful when the authorization server needs to identify which key to use for verification from a set of keys.
+
+This setting is only supported when using the `private_key_jwt` authentication method. It is ignored when using `client_secret_jwt`.
+
+### `rest.auth.oauth2.client-assertion.jwt.extra-claims.*`
+
+Extra claims to include in the client assertion JWT. This is a prefix property, and multiple values can be set, each with a different key and value.
+
+## Http Client Settings
+
+Configuration properties for HTTP clients.
+
+### `rest.auth.oauth2.http.client-type`
+
+The type of HTTP client to use for making HTTP requests to the OAuth2 server. Valid values are:
+
+- `default`: uses the built-in URLConnection-based client provided by the underlying OAuth2 library.
+- `apache`: uses the Apache HttpClient library, provided by Iceberg's runtime.
+
+Optional, defaults to `default`.
+
+### `rest.auth.oauth2.http.read-timeout`
+
+The read timeout for HTTP requests. Optional, defaults to `Duration.ofSeconds(30)`. Must be a valid [ISO-8601 duration](https://en.wikipedia.org/wiki/ISO_8601#Durations).
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.connect-timeout`
+
+The connection timeout for HTTP requests. Optional, defaults to `Duration.ofSeconds(10)`. Must be a valid [ISO-8601 duration](https://en.wikipedia.org/wiki/ISO_8601#Durations).
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.headers.*`
+
+HTTP headers to include in each HTTP request. This is a prefix property, and multiple values can be set, each with a different key and value.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.compression.enabled`
+
+Whether to enable compression for HTTP requests. Optional, defaults to `true`.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.ssl.protocols`
+
+A comma-separated list of SSL protocols to use for HTTPS requests. Optional, defaults to the system protocols.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.ssl.cipher-suites`
+
+A comma-separated list of SSL cipher suites to use for HTTPS requests. Optional, defaults to the system cipher suites.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.ssl.hostname-verification.enabled`
+
+Whether to enable SSL hostname verification for HTTPS requests.
+
+WARNING: Disabling hostname verification is a security risk and should only be used for testing purposes.
+
+Optional, defaults to `true`.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.ssl.trust-all`
+
+Whether to trust all SSL certificates for HTTPS requests.
+
+WARNING: Trusting all SSL certificates is a security risk and should only be used for testing purposes.
+
+Optional, defaults to `false`.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.ssl.trust-store.path`
+
+Path to the trust store to use for HTTPS requests. Optional, defaults to the system trust store.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.ssl.trust-store.password`
+
+Password for the trust store to use for HTTPS requests. Optional, defaults to no password.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`, or if `rest.auth.oauth2.http.ssl.trust-store.path` is not set.
+
+### `rest.auth.oauth2.http.proxy.host`
+
+Proxy host to use for HTTP requests. Optional, defaults to no proxy. If set, the proxy port must also be set.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.proxy.port`
+
+Proxy port to use for HTTP requests. Optional, defaults to no proxy. If set, the proxy host must also be set.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.proxy.username`
+
+Proxy username to use for HTTP requests. Optional, defaults to no authentication. If set, the proxy password must also be set.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+
+### `rest.auth.oauth2.http.proxy.password`
+
+Proxy password to use for HTTP requests. Optional, defaults to no authentication. If set, the proxy username must also be set.
+
+This setting is ignored when the client type (`rest.auth.oauth2.http.client-type`) is set to `default`.
+

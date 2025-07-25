@@ -103,7 +103,7 @@ jobs:
       with:
         distribution: zulu
         java-version: ${{ matrix.jvm }}
-    - run: ./gradlew -DallModules build -x test -x javadoc -x integrationTest
+    - run: ./gradlew -DallModules build -x test -x javadoc -x integrationTest -x intTest -x stressTest
 
   build-javadoc:
     runs-on: ubuntu-24.04
