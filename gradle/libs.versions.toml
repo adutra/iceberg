@@ -28,12 +28,14 @@ antlr413 = "4.13.1" # For Spark 4.0 support
 aircompressor = "0.27"
 apiguardian = "1.1.2"
 arrow = "15.0.2"
+auth0 = "4.5.0"
 avro = "1.12.0"
 assertj-core = "3.27.3"
 awaitility = "4.3.0"
 awssdk-bom = "2.32.9"
 azuresdk-bom = "1.2.36"
 awssdk-s3accessgrants = "2.3.0"
+bouncycastle = "1.70"
 bson-ver = "4.11.5"
 caffeine = "2.9.3"
 calcite = "1.40.0"
@@ -69,6 +71,7 @@ jetty = "11.0.25"
 junit = "5.13.4"
 junit-platform = "1.13.4"
 kafka = "3.9.1"
+keycloak-admin-client = "26.0.6"
 kryo-shaded = "4.0.3"
 microprofile-openapi-api = "3.1.2"
 mockito = "4.11.0"
@@ -87,6 +90,7 @@ spark35 = "3.5.6"
 spark40 = "4.0.0"
 sqlite-jdbc = "3.50.3.0"
 testcontainers = "1.21.3"
+testcontainers-keycloak = "3.6.0"
 tez08 = { strictly = "0.8.4"}  # see rich version usage explanation above
 
 [libraries]
@@ -100,11 +104,13 @@ antlr-antlr413 = { module = "org.antlr:antlr4", version.ref = "antlr413" }
 antlr-runtime413 = { module = "org.antlr:antlr4-runtime", version.ref = "antlr413" }
 arrow-memory-netty = { module = "org.apache.arrow:arrow-memory-netty", version.ref = "arrow" }
 arrow-vector = { module = "org.apache.arrow:arrow-vector", version.ref = "arrow" }
+auth0-jwt = { module = "com.auth0:java-jwt", version.ref = "auth0" }
 avro-avro = { module = "org.apache.avro:avro", version.ref = "avro" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "awssdk-bom" }
 awssdk-s3accessgrants = { module = "software.amazon.s3.accessgrants:aws-s3-accessgrants-java-plugin", version.ref = "awssdk-s3accessgrants" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version.ref = "azuresdk-bom" }
 bson = { module = "org.mongodb:bson", version.ref = "bson-ver"}
+bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk15on", version.ref = "bouncycastle" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
 calcite-core = { module = "org.apache.calcite:calcite-core", version.ref = "calcite" }
 calcite-druid = { module = "org.apache.calcite:calcite-druid", version.ref = "calcite" }
@@ -158,6 +164,7 @@ kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafk
 kafka-connect-api = { module = "org.apache.kafka:connect-api", version.ref = "kafka" }
 kafka-connect-json = { module = "org.apache.kafka:connect-json", version.ref = "kafka" }
 kafka-connect-transforms = { module = "org.apache.kafka:connect-transforms", version.ref = "kafka" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak-admin-client" }
 microprofile-openapi-api = { module = "org.eclipse.microprofile.openapi:microprofile-openapi-api", version.ref = "microprofile-openapi-api" }
 nessie-client = { module = "org.projectnessie.nessie:nessie-client", version.ref = "nessie" }
 netty-buffer = { module = "io.netty:netty-buffer", version.ref = "netty-buffer" }
@@ -218,6 +225,7 @@ orc-tools = { module = "org.apache.orc:orc-tools", version.ref = "orc" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version.ref = "testcontainers-keycloak" }
 testcontainers-minio = { module = "org.testcontainers:minio", version.ref = "testcontainers" }
 tez08-dag = { module = "org.apache.tez:tez-dag", version.ref = "tez08" }
 tez08-mapreduce = { module = "org.apache.tez:tez-mapreduce", version.ref = "tez08" }

@@ -1097,6 +1097,99 @@ project(':iceberg-open-api') {
   }
 }
 
+project(':iceberg-rest-oauth') {
+  apply plugin: 'java-test-fixtures'
+  apply plugin: 'jvm-test-suite'
+
+  test {
+    useJUnitPlatform()
+  }
+
+  testing {
+    suites {
+      intTest(JvmTestSuite) {
+        useJUnitJupiter()
+        dependencies {
+          implementation project()
+          implementation testFixtures(project())
+        }
+        check.dependsOn intTest
+        targets {
+          all {
+            testTask.configure {
+              shouldRunAfter(test)
+              mustRunAfter(test)
+            }
+          }
+        }
+      }
+      longTest(JvmTestSuite) {
+        useJUnitJupiter()
+        dependencies {
+          implementation project()
+          implementation testFixtures(project())
+        }
+        targets {
+          all {
+            testTask.configure {
+              shouldRunAfter(intTest)
+              mustRunAfter(intTest)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  dependencies {
+    implementation project(':iceberg-core')
+    implementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
+
+    implementation libs.httpcomponents.httpclient5
+    implementation libs.auth0.jwt
+    implementation libs.caffeine
+    implementation libs.slf4j.api
+
+    compileOnly libs.errorprone.annotations
+    compileOnly libs.findbugs.jsr305
+
+    implementation platform(libs.jackson.bom)
+    implementation libs.jackson.core
+    implementation libs.jackson.databind
+
+    annotationProcessor libs.immutables.value
+    compileOnly libs.immutables.value
+
+    testFixturesApi project(':iceberg-api')
+    testFixturesApi project(':iceberg-core')
+    testFixturesApi project(path: ':iceberg-bundled-guava', configuration: 'shadow')
+
+    testFixturesApi libs.junit.jupiter
+    testFixturesApi libs.assertj.core
+    testFixturesApi libs.mockito.core
+
+    testFixturesApi platform(libs.jackson.bom)
+    testFixturesApi libs.jackson.core
+    testFixturesApi libs.jackson.databind
+
+    testFixturesApi libs.httpcomponents.httpclient5
+    testFixturesApi libs.auth0.jwt
+    testFixturesApi libs.bouncycastle.bcpkix
+
+    testFixturesApi libs.mockserver.netty
+    testFixturesApi libs.mockserver.client.java
+
+    testFixturesApi libs.testcontainers
+    testFixturesApi libs.testcontainers.junit.jupiter
+    testFixturesApi libs.testcontainers.keycloak
+
+    testFixturesApi libs.keycloak.admin.client
+
+    testFixturesAnnotationProcessor libs.immutables.value
+    testFixturesCompileOnly libs.immutables.value
+  }
+}
+
 @Memoized
 boolean versionFileExists() {
   return file('version.txt').exists()
