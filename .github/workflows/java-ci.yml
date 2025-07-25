@@ -117,6 +117,15 @@ jobs:
         # Writes cache on main; read-only otherwise.
         cache-read-only: ${{ !(github.ref == 'refs/heads/main' && matrix.jvm == 17) }}
     - run: ./gradlew -DallModules build -x test -x javadoc -x integrationTest
+    - name: Check all generated files are up to date
+      run: |
+        if ! git diff --exit-code; then
+          echo ""
+          echo "ERROR: Generated files are out of date!"
+          echo "The above diff shows files that need to be regenerated."
+          echo "Please run './gradlew assemble' locally and commit the updated files."
+          exit 1
+        fi
 
   build-javadoc:
     runs-on: ubuntu-24.04

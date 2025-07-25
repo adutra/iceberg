@@ -90,7 +90,7 @@ gitProperties {
   gitPropertiesResourceDir = file("${rootDir}/build")
   extProperty = 'gitProps'
   failOnNoGitDirectory = true
-  keys = ['git.branch', 'git.build.version', 'git.closest.tag.name','git.commit.id.abbrev', 'git.commit.id',
+  keys = ['git.branch', 'git.build.version', 'git.closest.tag.name', 'git.commit.id.abbrev', 'git.commit.id',
           'git.commit.message.short', 'git.commit.time', 'git.tags']
   version = projectVersion
 }
@@ -164,7 +164,7 @@ subprojects {
         rootTask.finalizedBy showDeprecationRulesOnRevApiFailure
       }
     }
-    
+
     tasks.named("revapiAnalyze").configure {
       dependsOn(":iceberg-common:jar")
     }
@@ -375,9 +375,43 @@ project(':iceberg-common') {
 }
 
 project(':iceberg-core') {
+  apply plugin: 'java-test-fixtures'
+  apply plugin: 'jvm-test-suite'
+
   test {
     useJUnitPlatform()
   }
+
+  testing {
+    suites {
+      integrationTest(JvmTestSuite) {
+        useJUnitJupiter()
+        dependencies {
+          implementation project()
+          implementation testFixtures(project())
+        }
+        check.dependsOn integrationTest
+        targets {
+          all {
+            testTask.configure {
+              shouldRunAfter(test)
+              mustRunAfter(test)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  configurations {
+    docs {
+      description = 'Dependencies for generating configuration documentation'
+      canBeResolved = true
+      canBeConsumed = false
+      visible = false
+    }
+  }
+
   dependencies {
     api project(':iceberg-api')
     implementation project(':iceberg-common')
@@ -402,12 +436,20 @@ project(':iceberg-core') {
       exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     }
 
+    // OAuth2
+    implementation(libs.nimbus.oauth2.oidc.sdk) {
+      exclude group: 'net.minidev', module: 'accessors-smart'
+      exclude group: 'com.github.stephenc.jcip', module: 'jcip-annotations'
+    }
+    implementation libs.nimbus.jose.jwt
+
     testImplementation libs.jetty.servlet
     testImplementation libs.jakarta.servlet
     testImplementation libs.jetty.compression.server
     testImplementation libs.jetty.compression.gzip
     testImplementation libs.mockserver.netty
     testImplementation libs.mockserver.client.java
+    testImplementation libs.bouncycastle.bcpkix
     testImplementation libs.sqlite.jdbc
     testImplementation libs.derby.core
     testImplementation libs.derby.tools
@@ -424,7 +466,81 @@ project(':iceberg-core') {
     testImplementation libs.bouncycastle.bcpkix
     testImplementation libs.bouncycastle.bcutil
     testImplementation libs.bouncycastle.bcprov
+
+    testFixturesApi libs.junit.jupiter
+    testFixturesApi libs.junit.pioneer
+    testFixturesApi libs.assertj.core
+    testFixturesApi libs.mockito.core
+
+    testFixturesApi libs.httpcomponents.httpclient5
+    testFixturesApi libs.nimbus.oauth2.oidc.sdk
+    testFixturesApi libs.nimbus.jose.jwt
+
+    testFixturesApi libs.mockserver.netty
+    testFixturesApi libs.mockserver.client.java
+
+    testFixturesApi libs.testcontainers
+    testFixturesApi libs.testcontainers.junit.jupiter
+    testFixturesApi libs.testcontainers.keycloak
+
+    testFixturesApi libs.keycloak.admin.client
+
+    testFixturesImplementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
+
+    testFixturesAnnotationProcessor libs.immutables.value
+    testFixturesCompileOnly libs.immutables.value
+
+    integrationTestImplementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
+    integrationTestImplementation libs.slf4j.simple
+
+    // Required for CatalogTests
+    integrationTestImplementation project(path: ':iceberg-api', configuration: 'testArtifacts')
+    integrationTestImplementation project(path: ':iceberg-core', configuration: 'testArtifacts')
+    integrationTestImplementation libs.jetty.servlet
+    integrationTestImplementation libs.jakarta.servlet
+    integrationTestImplementation libs.jetty.compression.server
+    integrationTestImplementation libs.jetty.compression.gzip
+
+    docs libs.qdox
+    docs project(path: ':iceberg-bundled-guava', configuration: 'shadow')
   }
+
+  sourceSets {
+    docs {
+      java {
+        srcDir 'src/docs/java'
+      }
+      resources {
+        srcDir 'src/docs/resources'
+      }
+      compileClasspath += configurations.docs
+      runtimeClasspath += configurations.docs
+    }
+  }
+
+  tasks.named('processDocsResources', ProcessResources).configure {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+  }
+
+  tasks.register('generateOAuth2Docs', JavaExec) {
+    group = 'documentation'
+    description = 'Generates REST OAuth2 configuration documentation from OAuth2Config'
+    mainClass.set('org.apache.iceberg.rest.auth.oauth2.OAuth2DocumentationGenerator')
+    classpath = sourceSets.docs.runtimeClasspath
+
+    def inputFile = project.file('src/main/java/org/apache/iceberg/rest/auth/oauth2/OAuth2Config.java')
+    def outputFile = rootProject.file('docs/docs/oauth2-configuration.md')
+
+    inputs.files(inputFile)
+    outputs.file(outputFile)
+
+    args(inputFile.absolutePath, outputFile.absolutePath)
+
+    doFirst { outputFile.parentFile.mkdirs() }
+  }
+
+  assemble.dependsOn('generateOAuth2Docs')
+
 }
 
 project(':iceberg-data') {
