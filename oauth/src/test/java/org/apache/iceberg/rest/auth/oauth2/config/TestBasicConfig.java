@@ -1,0 +1,169 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iceberg.rest.auth.oauth2.config;
+
+import static java.util.Collections.singletonList;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.CLIENT_ID;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.CLIENT_SECRET;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.EXTRA_PARAMS_PREFIX;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.GRANT_TYPE;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.ISSUER_URL;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.SCOPE;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.TIMEOUT;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.TOKEN_ENDPOINT;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
+
+import java.net.URI;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
+import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthentication;
+import org.apache.iceberg.rest.auth.oauth2.config.validator.ConfigValidator;
+import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+class TestBasicConfig {
+
+  @ParameterizedTest
+  @MethodSource
+  void testValidate(BasicConfig.Builder config, List<String> expected) {
+    assertThatIllegalArgumentException()
+        .isThrownBy(config::build)
+        .withMessage(ConfigValidator.buildDescription(expected.stream()));
+  }
+
+  static Stream<Arguments> testValidate() {
+    return Stream.of(
+        Arguments.of(
+            BasicConfig.builder().clientId("Client1").clientSecret("s3cr3t"),
+            singletonList(
+                "either issuer URL or token endpoint must be set (rest.auth.oauth2.issuer-url / rest.auth.oauth2.token-endpoint)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("Client1")
+                .clientSecret("s3cr3t")
+                .issuerUrl(URI.create("realms/master")),
+            singletonList("Issuer URL must not be relative (rest.auth.oauth2.issuer-url)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("Client1")
+                .clientSecret("s3cr3t")
+                .issuerUrl(URI.create("https://example.com?query")),
+            singletonList("Issuer URL must not have a query part (rest.auth.oauth2.issuer-url)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("Client1")
+                .clientSecret("s3cr3t")
+                .issuerUrl(URI.create("https://example.com#fragment")),
+            singletonList(
+                "Issuer URL must not have a fragment part (rest.auth.oauth2.issuer-url)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("Client1")
+                .clientSecret("s3cr3t")
+                .tokenEndpoint(URI.create("https://example.com?query")),
+            singletonList(
+                "Token endpoint must not have a query part (rest.auth.oauth2.token-endpoint)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("Client1")
+                .clientSecret("s3cr3t")
+                .tokenEndpoint(URI.create("https://example.com#fragment")),
+            singletonList(
+                "Token endpoint must not have a fragment part (rest.auth.oauth2.token-endpoint)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("")
+                .clientSecret("s3cr3t")
+                .tokenEndpoint(URI.create("https://example.com/token")),
+            singletonList("client ID must not be empty (rest.auth.oauth2.client-id)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("client1")
+                .clientAuthentication(ClientAuthentication.CLIENT_SECRET_BASIC)
+                .tokenEndpoint(URI.create("https://example.com/token")),
+            singletonList(
+                "client secret must not be empty when client authentication is 'client_secret_basic' (rest.auth.oauth2.client-auth / rest.auth.oauth2.client-secret)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("client1")
+                .tokenEndpoint(URI.create("https://example.com/token")),
+            singletonList(
+                "client secret must not be empty when grant type is 'client_credentials' (rest.auth.oauth2.grant-type / rest.auth.oauth2.client-secret)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("Client1")
+                .clientSecret("s3cr3t")
+                .issuerUrl(URI.create("https://example.com"))
+                .timeout(Duration.ofSeconds(1)),
+            singletonList(
+                "timeout must be greater than or equal to PT30S (rest.auth.oauth2.timeout)")));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void testFromProperties(
+      Map<String, String> properties, BasicConfig expected, Throwable expectedThrowable) {
+    if (expectedThrowable == null) {
+      BasicConfig actual = BasicConfig.builder().from(properties).build();
+      assertThat(actual).usingRecursiveComparison().isEqualTo(expected);
+    } else {
+      Throwable actual = catchThrowable(() -> BasicConfig.builder().from(properties));
+      assertThat(actual)
+          .isInstanceOf(expectedThrowable.getClass())
+          .hasMessage(expectedThrowable.getMessage());
+    }
+  }
+
+  static Stream<Arguments> testFromProperties() {
+    return Stream.of(
+        Arguments.of(null, null, new NullPointerException("Invalid properties map: null")),
+        Arguments.of(
+            ImmutableMap.builder()
+                .put(ISSUER_URL, "https://example.com/")
+                .put(TOKEN_ENDPOINT, "https://example.com/token")
+                .put(GRANT_TYPE, "client_credentials")
+                .put(CLIENT_ID, "Client")
+                .put(CLIENT_SECRET, "w00t")
+                .put(SCOPE, "test")
+                .put(EXTRA_PARAMS_PREFIX + "extra1", "param1")
+                .put(EXTRA_PARAMS_PREFIX + "extra2", "param 2")
+                .put(EXTRA_PARAMS_PREFIX + "extra3", "") // empty
+                .put(EXTRA_PARAMS_PREFIX, "") // malformed
+                .put(TIMEOUT, "PT1M")
+                .build(),
+            BasicConfig.builder()
+                .issuerUrl(URI.create("https://example.com/"))
+                .tokenEndpoint(URI.create("https://example.com/token"))
+                .grantType(GrantType.CLIENT_CREDENTIALS)
+                .clientId("Client")
+                .clientSecret("w00t")
+                .scopes(List.of("test"))
+                .extraRequestParameters(ImmutableMap.of("extra1", "param1", "extra2", "param 2"))
+                .timeout(Duration.ofMinutes(1))
+                .build(),
+            null));
+  }
+}

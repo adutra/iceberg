@@ -1097,6 +1097,33 @@ project(':iceberg-open-api') {
   }
 }
 
+project(':iceberg-rest-oauth') {
+
+  test {
+    useJUnitPlatform()
+  }
+
+  dependencies {
+    api project(':iceberg-api')
+    implementation project(':iceberg-core')
+    implementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
+
+    implementation libs.slf4j.api
+
+    compileOnly libs.errorprone.annotations
+    compileOnly libs.findbugs.jsr305
+
+    annotationProcessor libs.immutables.value
+    compileOnly libs.immutables.value
+
+    testImplementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
+
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj.core
+    testImplementation libs.mockito.core
+  }
+}
+
 @Memoized
 boolean versionFileExists() {
   return file('version.txt').exists()
