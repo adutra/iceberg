@@ -22,7 +22,8 @@ import java.util.Locale;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 public enum GrantType {
-  CLIENT_CREDENTIALS(GrantCanonicalNames.CLIENT_CREDENTIALS, GrantCommonNames.CLIENT_CREDENTIALS);
+  CLIENT_CREDENTIALS(GrantCanonicalNames.CLIENT_CREDENTIALS, GrantCommonNames.CLIENT_CREDENTIALS),
+  REFRESH_TOKEN(GrantCanonicalNames.REFRESH_TOKEN, GrantCommonNames.REFRESH_TOKEN);
 
   private final String canonicalName;
   private final String commonName;
@@ -53,6 +54,6 @@ public enum GrantType {
   }
 
   public boolean initial() {
-    return true;
+    return this != REFRESH_TOKEN;
   }
 }

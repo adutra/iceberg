@@ -54,20 +54,28 @@ public abstract class AbstractTokenEndpointExpectation extends AbstractExpectati
 
   protected abstract PostFormRequest tokenRequestBody();
 
-  protected HttpResponse tokenResponse() {
-    return HttpResponse.response().withBody(ExpectationUtils.jsonBody(tokenResponseBody()));
+  protected HttpResponse tokenResponse(String accessToken, String refreshToken) {
+    return HttpResponse.response()
+        .withBody(ExpectationUtils.jsonBody(tokenResponseBody(accessToken, refreshToken)));
   }
 
-  protected TokenResponse tokenResponseBody() {
+  protected TokenResponse tokenResponseBody(String accessToken, String refreshToken) {
     DefaultTokenResponse.Builder builder = ImmutableDefaultTokenResponse.builder();
-    return buildTokenResponseBody(builder).build();
+    return buildTokenResponseBody(builder, accessToken, refreshToken).build();
   }
 
   protected TokenResponse.Builder<?, ?> buildTokenResponseBody(
-      TokenResponse.Builder<?, ?> builder) {
-    return builder
-        .accessTokenPayload("access_initial")
-        .accessTokenExpiresInSeconds((int) TestConstants.ACCESS_TOKEN_LIFESPAN.toSeconds())
-        .tokenType("bearer");
+      TokenResponse.Builder<?, ?> builder, String accessToken, String refreshToken) {
+    TokenResponse.Builder<?, ?> responseBody =
+        builder
+            .accessTokenPayload(accessToken)
+            .accessTokenExpiresInSeconds((int) testEnvironment().accessTokenLifespan().toSeconds())
+            .tokenType("bearer");
+    if (testEnvironment().returnRefreshTokens()) {
+      responseBody
+          .refreshTokenPayload(refreshToken)
+          .refreshTokenExpiresInSeconds((int) testEnvironment().refreshTokenLifespan().toSeconds());
+    }
+    return responseBody;
   }
 }

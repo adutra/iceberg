@@ -35,7 +35,7 @@ class TestClientCredentialsFlow {
       InitialFlow flow = flowFactory.createInitialFlow();
       assertThat(flow).isInstanceOf(ClientCredentialsFlow.class);
       Tokens tokens = flow.fetchNewTokens().toCompletableFuture().get();
-      assertTokens(tokens, "access_initial");
+      assertTokens(tokens, "access_initial", "refresh_initial");
     }
   }
 }

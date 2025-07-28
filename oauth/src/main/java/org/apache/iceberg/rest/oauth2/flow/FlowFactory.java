@@ -59,6 +59,21 @@ public abstract class FlowFactory implements AutoCloseable {
         .build();
   }
 
+  /**
+   * Creates a flow for refreshing tokens. This is used for refreshing tokens when the access token
+   * expires.
+   */
+  public RefreshFlow createTokenRefreshFlow() {
+    return newTokenRefreshFlowBuilder()
+        .spec(spec())
+        .clock(clock())
+        .executor(executor())
+        .restClient(restClientSupplier().get())
+        .endpointProvider(endpointProvider())
+        .clientAuthenticator(clientAuthenticator())
+        .build();
+  }
+
   @Override
   public void close() {}
 
@@ -88,5 +103,9 @@ public abstract class FlowFactory implements AutoCloseable {
         throw new IllegalArgumentException(
             "Unknown or invalid grant type for initial token fetch: " + spec().grantType());
     }
+  }
+
+  private AbstractFlow.Builder<? extends RefreshFlow, ?> newTokenRefreshFlowBuilder() {
+    return ImmutableRefreshTokenFlow.builder();
   }
 }

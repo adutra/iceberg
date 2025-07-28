@@ -22,15 +22,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import org.apache.iceberg.rest.oauth2.token.AccessToken;
+import org.apache.iceberg.rest.oauth2.token.RefreshToken;
 import org.apache.iceberg.rest.oauth2.token.Tokens;
 
 public final class TokenAssertions {
 
   private TokenAssertions() {}
 
-  public static void assertTokens(Tokens tokens, String accessToken) {
+  public static void assertTokens(Tokens tokens, String accessToken, String refreshToken) {
     assertAccessToken(
         tokens.accessToken(), accessToken, TestConstants.ACCESS_TOKEN_EXPIRATION_TIME);
+    assertRefreshToken(tokens.refreshToken(), refreshToken);
   }
 
   public static void assertAccessToken(
@@ -38,5 +40,14 @@ public final class TokenAssertions {
     assertThat(actual.payload()).isEqualTo(expected);
     assertThat(actual.expirationTime()).isEqualTo(expirationTime);
     assertThat(actual.tokenType()).isEqualToIgnoringCase("bearer");
+  }
+
+  public static void assertRefreshToken(RefreshToken actual, String expected) {
+    if (expected == null) {
+      assertThat(actual).isNull();
+    } else {
+      assertThat(actual.payload()).isEqualTo(expected);
+      assertThat(actual.expirationTime()).isEqualTo(TestConstants.REFRESH_TOKEN_EXPIRATION_TIME);
+    }
   }
 }

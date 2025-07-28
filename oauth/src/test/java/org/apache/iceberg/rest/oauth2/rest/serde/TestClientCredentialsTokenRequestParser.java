@@ -56,6 +56,12 @@ public class TestClientCredentialsTokenRequestParser {
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unknown grant type: invalid_grant");
 
+    assertThatThrownBy(
+            () ->
+                ClientCredentialsTokenRequestParser.fromJson("{\"grant_type\": \"refresh_token\"}"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Invalid grant type: refresh_token (expected client_credentials)");
+
     assertThatThrownBy(() -> ClientCredentialsTokenRequestParser.fromJson("{\"grant_type\": 123}"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Cannot parse to a string value: grant_type: 123");

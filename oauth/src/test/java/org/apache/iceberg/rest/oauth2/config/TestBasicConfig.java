@@ -116,6 +116,14 @@ class TestBasicConfig {
             BasicConfig.builder()
                 .clientId("Client1")
                 .clientSecret("s3cr3t")
+                .tokenEndpoint(URI.create("https://example.com/token"))
+                .grantType(GrantType.REFRESH_TOKEN),
+            singletonList(
+                "grant type must be one of: 'client_credentials' (rest.auth.oauth2.grant-type)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("Client1")
+                .clientSecret("s3cr3t")
                 .issuerUrl(URI.create("https://example.com"))
                 .timeout(Duration.ofSeconds(1)),
             singletonList(

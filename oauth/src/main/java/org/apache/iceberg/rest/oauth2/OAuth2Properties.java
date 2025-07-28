@@ -143,4 +143,45 @@ public final class OAuth2Properties {
      */
     public static final String TIMEOUT = PREFIX + "timeout";
   }
+
+  /** Configuration properties for the token refresh feature. */
+  public static final class TokenRefresh {
+
+    public static final String PREFIX = OAuth2Properties.PREFIX + "token-refresh.";
+
+    /**
+     * Whether to enable token refresh. If enabled, the agent will automatically refresh its access
+     * token when it expires. If disabled, the agent will only fetch the initial access token, but
+     * won't refresh it. Defaults to {@code true}.
+     */
+    public static final String ENABLED = TokenRefresh.PREFIX + "enabled";
+
+    /**
+     * Default access token lifespan; if the OAuth2 server returns an access token without
+     * specifying its expiration time, this value will be used. Note that when this happens, a
+     * warning will be logged.
+     *
+     * <p>Optional, defaults to 5 minutes. Must be a valid <a
+     * href="https://en.wikipedia.org/wiki/ISO_8601#Durations">ISO-8601 duration</a>.
+     */
+    public static final String ACCESS_TOKEN_LIFESPAN =
+        TokenRefresh.PREFIX + "access-token-lifespan";
+
+    /**
+     * Refresh safety margin to use; a new token will be fetched when the current token's remaining
+     * lifespan is less than this value. Optional, defaults to 10 seconds. Must be a valid <a
+     * href="https://en.wikipedia.org/wiki/ISO_8601#Durations">ISO-8601 duration</a>.
+     */
+    public static final String SAFETY_MARGIN = TokenRefresh.PREFIX + "safety-margin";
+
+    /**
+     * Defines for how long the OAuth2 manager should keep the tokens fresh, if the agent is not
+     * being actively used. Setting this value too high may cause an excessive usage of network I/O
+     * and thread resources; conversely, when setting it too low, if the agent is used again, the
+     * calling thread may block if the tokens are expired and need to be renewed synchronously.
+     * Optional, defaults to 30 seconds. Must be a valid <a
+     * href="https://en.wikipedia.org/wiki/ISO_8601#Durations">ISO-8601 duration</a>.
+     */
+    public static final String IDLE_TIMEOUT = TokenRefresh.PREFIX + "idle-timeout";
+  }
 }

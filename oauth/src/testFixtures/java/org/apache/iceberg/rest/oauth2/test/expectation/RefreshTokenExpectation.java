@@ -18,13 +18,30 @@
  */
 package org.apache.iceberg.rest.oauth2.test.expectation;
 
-public abstract class InitialTokenFetchExpectation extends AbstractTokenEndpointExpectation {
+import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
+import org.apache.iceberg.rest.oauth2.rest.ImmutableRefreshTokenRequest;
+import org.apache.iceberg.rest.oauth2.rest.PostFormRequest;
+import org.apache.iceberg.rest.oauth2.test.TestConstants;
+import org.immutables.value.Value;
+
+@Value.Immutable
+@OAuth2ImmutableStyle
+@SuppressWarnings("resource")
+public abstract class RefreshTokenExpectation extends AbstractTokenEndpointExpectation {
 
   @Override
-  @SuppressWarnings("resource")
   public void create() {
     clientAndServer()
         .when(tokenRequest())
-        .respond(tokenResponse("access_initial", "refresh_initial"));
+        .respond(tokenResponse("access_refreshed", "refresh_refreshed"));
+  }
+
+  @Override
+  protected PostFormRequest tokenRequestBody() {
+    return ImmutableRefreshTokenRequest.builder()
+        .refreshToken("refresh_.*")
+        .scope(TestConstants.SCOPE1)
+        .putExtraParameter("extra1", "value1")
+        .build();
   }
 }
