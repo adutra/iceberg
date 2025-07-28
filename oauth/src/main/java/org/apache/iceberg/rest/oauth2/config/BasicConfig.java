@@ -1,0 +1,314 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iceberg.rest.oauth2.config;
+
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import java.net.URI;
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
+import org.apache.iceberg.rest.oauth2.OAuth2Properties;
+import org.apache.iceberg.rest.oauth2.auth.ClientAuthentication;
+import org.apache.iceberg.rest.oauth2.config.option.ConfigOption;
+import org.apache.iceberg.rest.oauth2.config.option.ConfigOptions;
+import org.apache.iceberg.rest.oauth2.config.validator.ConfigValidator;
+import org.apache.iceberg.rest.oauth2.grant.GrantType;
+import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
+import org.immutables.value.Value;
+
+@Value.Immutable
+@OAuth2ImmutableStyle
+public interface BasicConfig {
+
+  Duration DEFAULT_TIMEOUT = Duration.ofMinutes(5);
+  Duration MIN_TIMEOUT = Duration.ofSeconds(30);
+
+  /**
+   * The root URL of the Authorization server, which will be used for discovering supported
+   * endpoints and their locations. For Keycloak, this is typically the realm URL: {@code
+   * https://<keycloak-server>/realms/<realm-name>}.
+   *
+   * <p>Two "well-known" paths are supported for endpoint discovery: {@code
+   * .well-known/openid-configuration} and {@code .well-known/oauth-authorization-server}. The full
+   * metadata discovery URL will be constructed by appending these paths to the issuer URL.
+   *
+   * <p>Either this property or {@link #tokenEndpoint()} must be set.
+   *
+   * @see <a
+   *     href="https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata">OpenID
+   *     Connect Discovery 1.0</a>
+   * @see <a href="https://tools.ietf.org/html/rfc8414#section-5">RFC 8414 Section 5</a>
+   * @see OAuth2Properties.Basic#ISSUER_URL
+   */
+  Optional<URI> issuerUrl();
+
+  /**
+   * The OAuth2 token endpoint. Either this or {@link #issuerUrl()} must be set.
+   *
+   * <p>This URI may be relative, in which case it is assumed to be relative to the HTTP client's
+   * base URI. In this case, the URI must not start with a slash.
+   *
+   * @see OAuth2Properties.Basic#TOKEN_ENDPOINT
+   */
+  Optional<URI> tokenEndpoint();
+
+  /**
+   * The OAuth2 grant type. Defaults to {@link GrantType#CLIENT_CREDENTIALS}.
+   *
+   * @see OAuth2Properties.Basic#GRANT_TYPE
+   */
+  @Value.Default
+  default GrantType grantType() {
+    return GrantType.CLIENT_CREDENTIALS;
+  }
+
+  /**
+   * The OAuth2 client ID. Must be set.
+   *
+   * @see OAuth2Properties.Basic#CLIENT_ID
+   */
+  Optional<String> clientId();
+
+  /**
+   * The OAuth2 client authentication method. Defaults to {@link
+   * ClientAuthentication#CLIENT_SECRET_BASIC} if the client is private, or {@link
+   * ClientAuthentication#NONE} if the client is public.
+   *
+   * @see OAuth2Properties.Basic#CLIENT_AUTH
+   */
+  @Value.Default
+  default ClientAuthentication clientAuthentication() {
+    return clientSecret().isPresent()
+        ? ClientAuthentication.CLIENT_SECRET_BASIC
+        : ClientAuthentication.NONE;
+  }
+
+  /**
+   * The OAuth2 client secret. Must be set if the client is private (confidential) and client
+   * authentication is done using a client secret.
+   *
+   * @see OAuth2Properties.Basic#CLIENT_SECRET
+   */
+  Optional<Secret> clientSecret();
+
+  /**
+   * The OAuth2 scopes. Optional.
+   *
+   * @see OAuth2Properties.Basic#SCOPE
+   */
+  List<String> scopes();
+
+  /**
+   * Additional parameters to be included in the request. This is useful for custom parameters that
+   * are not covered by the standard OAuth2.0 specification.
+   *
+   * @see OAuth2Properties.Basic#EXTRA_PARAMS_PREFIX
+   */
+  Map<String, String> extraRequestParameters();
+
+  /**
+   * Defines how long the agent should wait for tokens to be acquired. Defaults to {@link
+   * #DEFAULT_TIMEOUT}.
+   *
+   * @see OAuth2Properties.Basic#TIMEOUT
+   */
+  @Value.Default
+  default Duration timeout() {
+    return DEFAULT_TIMEOUT;
+  }
+
+  /**
+   * The minimum allowed value for {@link #timeout()}. Defaults to 30 seconds.
+   *
+   * <p>This setting is not exposed as a configuration option and is intended for testing purposes.
+   */
+  @Value.Default
+  @Value.Auxiliary
+  default Duration minTimeout() {
+    return MIN_TIMEOUT;
+  }
+
+  @Value.Check
+  default BasicConfig validate() {
+    ConfigValidator validator = new ConfigValidator();
+    BasicConfig basicConfig = validateEndpoints(validator);
+    validateClientCredentials(validator);
+    validateTimeout(validator);
+    validator.validate();
+    return basicConfig;
+  }
+
+  private BasicConfig validateEndpoints(ConfigValidator validator) {
+    BasicConfig basicConfig = this;
+    validator.check(
+        issuerUrl().isPresent() || tokenEndpoint().isPresent(),
+        List.of(OAuth2Properties.Basic.ISSUER_URL, OAuth2Properties.Basic.TOKEN_ENDPOINT),
+        "either issuer URL or token endpoint must be set");
+    if (issuerUrl().isPresent()) {
+      validator.checkEndpoint(
+          issuerUrl().get(), OAuth2Properties.Basic.ISSUER_URL, "Issuer URL %s");
+    }
+
+    if (tokenEndpoint().isPresent()) {
+      // The token endpoint is allowed to be relative, in which case we assume
+      // it is relative to the HTTP client's base URI and points to the REST catalog
+      // server's internal token endpoint.
+      validator.checkEndpoint(
+          tokenEndpoint().get(), OAuth2Properties.Basic.TOKEN_ENDPOINT, "Token endpoint %s");
+    }
+
+    return basicConfig;
+  }
+
+  private void validateClientCredentials(ConfigValidator validator) {
+    validator.check(
+        clientId().isPresent() && !clientId().get().isEmpty(),
+        OAuth2Properties.Basic.CLIENT_ID,
+        "client ID must not be empty");
+    if (clientAuthentication().isClientSecret()) {
+      validator.check(
+          clientSecret().isPresent(),
+          List.of(OAuth2Properties.Basic.CLIENT_AUTH, OAuth2Properties.Basic.CLIENT_SECRET),
+          "client secret must not be empty when client authentication is '%s'",
+          clientAuthentication().getCanonicalName());
+    } else {
+      validator.check(
+          clientSecret().isPresent() || grantType() != GrantType.CLIENT_CREDENTIALS,
+          List.of(OAuth2Properties.Basic.GRANT_TYPE, OAuth2Properties.Basic.CLIENT_SECRET),
+          "client secret must not be empty when grant type is '%s'",
+          GrantType.CLIENT_CREDENTIALS.commonName());
+    }
+  }
+
+  private void validateTimeout(ConfigValidator validator) {
+    validator.check(
+        timeout().compareTo(minTimeout()) >= 0,
+        OAuth2Properties.Basic.TIMEOUT,
+        "timeout must be greater than or equal to %s",
+        minTimeout());
+  }
+
+  static Builder builder() {
+    return ImmutableBasicConfig.builder();
+  }
+
+  interface Builder {
+
+    @CanIgnoreReturnValue
+    Builder from(BasicConfig config);
+
+    @CanIgnoreReturnValue
+    default Builder from(Map<String, String> properties) {
+      Preconditions.checkNotNull(properties, "Invalid properties map: null");
+      clientIdOption().set(properties);
+      clientAuthenticationOption().set(properties);
+      clientSecretOption().set(properties);
+      issuerUrlOption().set(properties);
+      tokenEndpointOption().set(properties);
+      grantTypeOption().set(properties);
+      scopesOption().set(properties);
+      extraRequestParametersOption().set(properties);
+      timeoutOption().set(properties);
+      return this;
+    }
+
+    @CanIgnoreReturnValue
+    Builder issuerUrl(URI issuerUrl);
+
+    @CanIgnoreReturnValue
+    Builder tokenEndpoint(URI tokenEndpoint);
+
+    @CanIgnoreReturnValue
+    Builder grantType(GrantType grantType);
+
+    @CanIgnoreReturnValue
+    Builder clientId(String clientId);
+
+    @CanIgnoreReturnValue
+    Builder clientAuthentication(ClientAuthentication clientAuthentication);
+
+    @CanIgnoreReturnValue
+    default Builder clientSecret(String clientSecret) {
+      return clientSecret(Secret.of(clientSecret));
+    }
+
+    @CanIgnoreReturnValue
+    Builder clientSecret(Secret clientSecret);
+
+    @CanIgnoreReturnValue
+    Builder scopes(Iterable<String> scopes);
+
+    @CanIgnoreReturnValue
+    Builder extraRequestParameters(Map<String, ? extends String> extraRequestParameters);
+
+    @CanIgnoreReturnValue
+    Builder timeout(Duration timeout);
+
+    @CanIgnoreReturnValue
+    Builder minTimeout(Duration minTimeout);
+
+    BasicConfig build();
+
+    private ConfigOption<String> clientIdOption() {
+      return ConfigOptions.simple(OAuth2Properties.Basic.CLIENT_ID, this::clientId);
+    }
+
+    private ConfigOption<ClientAuthentication> clientAuthenticationOption() {
+      return ConfigOptions.simple(
+          OAuth2Properties.Basic.CLIENT_AUTH,
+          this::clientAuthentication,
+          ClientAuthentication::fromConfigName);
+    }
+
+    private ConfigOption<Secret> clientSecretOption() {
+      return ConfigOptions.simple(
+          OAuth2Properties.Basic.CLIENT_SECRET, this::clientSecret, Secret::of);
+    }
+
+    private ConfigOption<URI> issuerUrlOption() {
+      return ConfigOptions.simple(OAuth2Properties.Basic.ISSUER_URL, this::issuerUrl, URI::create);
+    }
+
+    private ConfigOption<URI> tokenEndpointOption() {
+      return ConfigOptions.simple(
+          OAuth2Properties.Basic.TOKEN_ENDPOINT, this::tokenEndpoint, URI::create);
+    }
+
+    private ConfigOption<GrantType> grantTypeOption() {
+      return ConfigOptions.simple(
+          OAuth2Properties.Basic.GRANT_TYPE, this::grantType, GrantType::fromConfigName);
+    }
+
+    private ConfigOption<List<String>> scopesOption() {
+      return ConfigOptions.simple(
+          OAuth2Properties.Basic.SCOPE, this::scopes, ConfigUtils::scopesAsList);
+    }
+
+    private ConfigOption<Map<String, String>> extraRequestParametersOption() {
+      return ConfigOptions.prefixMap(
+          OAuth2Properties.Basic.EXTRA_PARAMS_PREFIX, this::extraRequestParameters);
+    }
+
+    private ConfigOption<Duration> timeoutOption() {
+      return ConfigOptions.simple(OAuth2Properties.Basic.TIMEOUT, this::timeout, Duration::parse);
+    }
+  }
+}
