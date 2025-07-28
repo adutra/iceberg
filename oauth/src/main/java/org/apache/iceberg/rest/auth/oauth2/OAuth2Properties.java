@@ -88,9 +88,6 @@ public final class OAuth2Properties {
      *       header.
      *   <li>{@code client_secret_post}: client secret is sent in the request body as a form
      *       parameter.
-     *   <li>{@code client_secret_jwt}: client secret is used to sign a JWT token.
-     *   <li>{@code private_key_jwt}: client authenticates with a JWT assertion signed with a
-     *       private key.
      * </ul>
      *
      * The default is {@code client_secret_basic} if the client is private, or {@code none} if the
