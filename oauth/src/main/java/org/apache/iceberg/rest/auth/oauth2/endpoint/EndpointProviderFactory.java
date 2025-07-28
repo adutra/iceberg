@@ -20,17 +20,17 @@ package org.apache.iceberg.rest.auth.oauth2.endpoint;
 
 import java.util.function.Supplier;
 import org.apache.iceberg.rest.RESTClient;
-import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2AgentSpec;
 
 public final class EndpointProviderFactory {
 
   private EndpointProviderFactory() {}
 
   public static EndpointProvider createEndpointProvider(
-      BasicConfig spec, Supplier<RESTClient> restClient) {
+      OAuth2AgentSpec spec, Supplier<RESTClient> restClient) {
     EndpointProvider.Builder builder = EndpointProvider.builder().restClientSupplier(restClient);
-    spec.issuerUrl().ifPresent(builder::issuerUrl);
-    spec.tokenEndpoint().ifPresent(builder::tokenEndpoint);
+    spec.basicConfig().issuerUrl().ifPresent(builder::issuerUrl);
+    spec.basicConfig().tokenEndpoint().ifPresent(builder::tokenEndpoint);
     return builder.build();
   }
 }

@@ -18,6 +18,7 @@
  */
 package org.apache.iceberg.rest.auth.oauth2.token;
 
+import com.auth0.jwt.JWT;
 import java.time.Instant;
 import javax.annotation.Nullable;
 import org.immutables.value.Value;
@@ -33,4 +34,38 @@ public interface Token {
   /** The token expiration time as reported in the token response, if any. */
   @Nullable
   Instant expirationTime();
+
+  /**
+   * The JWT token expiration time, if the token is a JWT token and contains an expiration claim.
+   */
+  @Value.Lazy
+  @Nullable
+  default Instant jwtExpirationTime() {
+    try {
+      return JWT.decode(payload()).getExpiresAtAsInstant();
+    } catch (Exception ignored) {
+      return null;
+    }
+  }
+
+  /**
+   * The resolved expiration time of the token, taking into account the token's expiration time and
+   * its JWT claims, if applicable.
+   */
+  @Value.Derived
+  @Nullable
+  default Instant resolvedExpirationTime() {
+    Instant exp = expirationTime();
+    return exp != null ? exp : jwtExpirationTime();
+  }
+
+  /**
+   * Returns true if the token is expired at the given time, inspecting the token's expiration time
+   * and its JWT claims, if applicable. Note that if no expiration time is found, this method
+   * returns false.
+   */
+  default boolean expired(Instant when) {
+    Instant exp = resolvedExpirationTime();
+    return exp != null && !exp.isAfter(when);
+  }
 }

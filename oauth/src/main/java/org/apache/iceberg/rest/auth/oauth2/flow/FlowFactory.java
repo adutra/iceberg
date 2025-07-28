@@ -18,13 +18,12 @@
  */
 package org.apache.iceberg.rest.auth.oauth2.flow;
 
-import java.time.Clock;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 import org.apache.iceberg.rest.RESTClient;
+import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthenticator;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthenticatorFactory;
-import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.auth.oauth2.endpoint.EndpointProvider;
 import org.apache.iceberg.rest.auth.oauth2.endpoint.EndpointProviderFactory;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
@@ -35,13 +34,11 @@ import org.immutables.value.Value;
 public abstract class FlowFactory implements AutoCloseable {
 
   public static FlowFactory of(
-      BasicConfig spec,
-      Clock clock,
+      OAuth2AgentSpec spec,
       ScheduledExecutorService executor,
       Supplier<RESTClient> restClientSupplier) {
     return ImmutableFlowFactory.builder()
         .spec(spec)
-        .clock(clock)
         .executor(executor)
         .restClientSupplier(restClientSupplier)
         .build();
@@ -51,7 +48,6 @@ public abstract class FlowFactory implements AutoCloseable {
   public InitialFlow createInitialFlow() {
     return newInitialFlowBuilder()
         .spec(spec())
-        .clock(clock())
         .executor(executor())
         .restClient(restClientSupplier().get())
         .endpointProvider(endpointProvider())
@@ -66,7 +62,6 @@ public abstract class FlowFactory implements AutoCloseable {
   public RefreshFlow createTokenRefreshFlow() {
     return newTokenRefreshFlowBuilder()
         .spec(spec())
-        .clock(clock())
         .executor(executor())
         .restClient(restClientSupplier().get())
         .endpointProvider(endpointProvider())
@@ -77,9 +72,7 @@ public abstract class FlowFactory implements AutoCloseable {
   @Override
   public void close() {}
 
-  protected abstract BasicConfig spec();
-
-  protected abstract Clock clock();
+  protected abstract OAuth2AgentSpec spec();
 
   protected abstract ScheduledExecutorService executor();
 
@@ -92,16 +85,17 @@ public abstract class FlowFactory implements AutoCloseable {
 
   @Value.Default
   protected ClientAuthenticator clientAuthenticator() {
-    return ClientAuthenticatorFactory.createAuthenticator(spec());
+    return ClientAuthenticatorFactory.createAuthenticator(spec().basicConfig());
   }
 
   private AbstractFlow.Builder<? extends InitialFlow, ?> newInitialFlowBuilder() {
-    switch (spec().grantType()) {
+    switch (spec().basicConfig().grantType()) {
       case CLIENT_CREDENTIALS:
         return ImmutableClientCredentialsFlow.builder();
       default:
         throw new IllegalArgumentException(
-            "Unknown or invalid grant type for initial token fetch: " + spec().grantType());
+            "Unknown or invalid grant type for initial token fetch: "
+                + spec().basicConfig().grantType());
     }
   }
 

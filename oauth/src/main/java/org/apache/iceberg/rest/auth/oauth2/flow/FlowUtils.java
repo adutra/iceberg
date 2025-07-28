@@ -16,17 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.rest.auth.oauth2.test.server;
+package org.apache.iceberg.rest.auth.oauth2.flow;
 
-import java.net.URI;
+import java.security.SecureRandom;
+import java.util.Random;
 
-/** A simple facade around MockServer's HTTP server. */
-public interface HttpServer extends AutoCloseable {
+public final class FlowUtils {
 
-  URI rootUrl();
+  private static final Random RANDOM = new SecureRandom();
 
-  void reset();
+  private FlowUtils() {}
 
-  @Override
-  void close();
+  public static String randomAlphaNumString(int length) {
+    return RANDOM
+        .ints('0', 'z' + 1)
+        .filter(i -> (i <= '9') || (i >= 'A' && i <= 'Z') || (i >= 'a'))
+        .limit(length)
+        .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+        .toString();
+  }
 }

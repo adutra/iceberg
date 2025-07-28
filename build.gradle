@@ -1110,6 +1110,7 @@ project(':iceberg-rest-oauth') {
     implementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
 
     implementation libs.httpcomponents.httpclient5
+    implementation libs.auth0.jwt
     implementation libs.slf4j.api
 
     compileOnly libs.errorprone.annotations

@@ -16,17 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.rest.auth.oauth2.test.server;
+package org.apache.iceberg.rest.auth.oauth2.flow;
 
-import java.net.URI;
+import static org.assertj.core.api.Assertions.assertThat;
 
-/** A simple facade around MockServer's HTTP server. */
-public interface HttpServer extends AutoCloseable {
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-  URI rootUrl();
+class TestFlowUtils {
 
-  void reset();
-
-  @Override
-  void close();
+  @ParameterizedTest
+  @ValueSource(ints = {1, 5, 10, 15, 20, 100})
+  void testRandomAlphaNumString(int length) {
+    String actual = FlowUtils.randomAlphaNumString(length);
+    assertThat(actual).hasSize(length).matches("^[a-zA-Z0-9]*$");
+  }
 }

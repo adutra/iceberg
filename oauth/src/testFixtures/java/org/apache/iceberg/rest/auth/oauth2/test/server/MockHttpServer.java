@@ -45,6 +45,11 @@ public class MockHttpServer implements HttpServer {
   }
 
   @Override
+  public void reset() {
+    clientAndServer.reset();
+  }
+
+  @Override
   public void close() {
     clientAndServer.close();
   }
