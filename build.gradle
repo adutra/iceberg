@@ -1109,6 +1109,7 @@ project(':iceberg-rest-oauth') {
     implementation project(':iceberg-core')
     implementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
 
+    implementation libs.httpcomponents.httpclient5
     implementation libs.slf4j.api
 
     compileOnly libs.errorprone.annotations
@@ -1121,6 +1122,21 @@ project(':iceberg-rest-oauth') {
     annotationProcessor libs.immutables.value
     compileOnly libs.immutables.value
 
+    testFixturesAnnotationProcessor libs.immutables.value
+    testFixturesCompileOnly libs.immutables.value
+
+    testFixturesImplementation project(':iceberg-core')
+    testFixturesImplementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
+
+    testFixturesImplementation libs.httpcomponents.httpclient5
+
+    testFixturesImplementation libs.junit.jupiter
+    testFixturesImplementation libs.assertj.core
+    testFixturesImplementation libs.mockito.core
+
+    testFixturesImplementation libs.mockserver.client.java
+    testFixturesImplementation libs.mockserver.netty
+
     testImplementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
 
     testImplementation libs.junit.jupiter
@@ -1130,6 +1146,9 @@ project(':iceberg-rest-oauth') {
     testImplementation platform(libs.jackson.bom)
     testImplementation libs.jackson.core
     testImplementation libs.jackson.databind
+
+    testImplementation libs.mockserver.client.java
+    testImplementation libs.mockserver.netty
   }
 }
 

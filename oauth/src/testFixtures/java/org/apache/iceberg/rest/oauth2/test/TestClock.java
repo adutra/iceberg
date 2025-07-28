@@ -18,30 +18,36 @@
  */
 package org.apache.iceberg.rest.oauth2.test;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
+import java.time.Clock;
 import java.time.Instant;
-import java.util.Base64;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.TemporalAmount;
 
-public final class TestConstants {
+public class TestClock extends Clock {
 
-  private TestConstants() {}
+  private Instant now;
 
-  public static final String CLIENT_ID1 = "Client1";
+  public TestClock(Instant now) {
+    this.now = now;
+  }
 
-  public static final String CLIENT_SECRET1 = "s3cr3t";
+  @Override
+  public Instant instant() {
+    return now;
+  }
 
-  public static final String SCOPE1 = "catalog";
+  @Override
+  public ZoneId getZone() {
+    return ZoneOffset.UTC;
+  }
 
-  public static final String CLIENT_CREDENTIALS1_BASE_64 =
-      Base64.getEncoder()
-          .encodeToString((CLIENT_ID1 + ":" + CLIENT_SECRET1).getBytes(StandardCharsets.UTF_8));
+  @Override
+  public Clock withZone(ZoneId zone) {
+    throw new UnsupportedOperationException();
+  }
 
-  public static final Instant NOW = Instant.parse("2025-01-01T00:00:00Z");
-
-  public static final int ACCESS_TOKEN_EXPIRES_IN_SECONDS = 3600;
-  public static final Instant ACCESS_TOKEN_EXPIRATION_TIME =
-      NOW.plusSeconds(ACCESS_TOKEN_EXPIRES_IN_SECONDS);
-  public static final Duration ACCESS_TOKEN_LIFESPAN =
-      Duration.ofSeconds(ACCESS_TOKEN_EXPIRES_IN_SECONDS);
+  public void plus(TemporalAmount amount) {
+    now = now.plus(amount);
+  }
 }

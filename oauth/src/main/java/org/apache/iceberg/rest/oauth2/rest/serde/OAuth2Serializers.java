@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.IOException;
 import org.apache.iceberg.rest.oauth2.rest.ClientCredentialsTokenRequest;
 import org.apache.iceberg.rest.oauth2.rest.DefaultTokenResponse;
+import org.apache.iceberg.rest.oauth2.rest.MetadataDiscoveryResponse;
 
 public final class OAuth2Serializers {
 
@@ -47,7 +48,11 @@ public final class OAuth2Serializers {
         // Responses
         // DefaultTokenResponse
         .addSerializer(DefaultTokenResponse.class, new DefaultTokenResponseSerializer())
-        .addDeserializer(DefaultTokenResponse.class, new DefaultTokenResponseDeserializer());
+        .addDeserializer(DefaultTokenResponse.class, new DefaultTokenResponseDeserializer())
+        // MetadataDiscoveryResponse
+        .addSerializer(MetadataDiscoveryResponse.class, new MetadataDiscoveryResponseSerializer())
+        .addDeserializer(
+            MetadataDiscoveryResponse.class, new MetadataDiscoveryResponseDeserializer());
 
     mapper.registerModule(module);
   }
@@ -87,6 +92,26 @@ public final class OAuth2Serializers {
         throws IOException {
       JsonNode jsonNode = p.getCodec().readTree(p);
       return DefaultTokenResponseParser.fromJson(jsonNode);
+    }
+  }
+
+  static class MetadataDiscoveryResponseSerializer
+      extends JsonSerializer<MetadataDiscoveryResponse> {
+    @Override
+    public void serialize(
+        MetadataDiscoveryResponse request, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      MetadataDiscoveryResponseParser.toJson(request, gen);
+    }
+  }
+
+  static class MetadataDiscoveryResponseDeserializer
+      extends JsonDeserializer<MetadataDiscoveryResponse> {
+    @Override
+    public MetadataDiscoveryResponse deserialize(JsonParser p, DeserializationContext context)
+        throws IOException {
+      JsonNode jsonNode = p.getCodec().readTree(p);
+      return MetadataDiscoveryResponseParser.fromJson(jsonNode);
     }
   }
 }

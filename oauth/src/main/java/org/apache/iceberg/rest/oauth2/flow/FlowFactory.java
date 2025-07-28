@@ -1,0 +1,92 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iceberg.rest.oauth2.flow;
+
+import java.time.Clock;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.function.Supplier;
+import org.apache.iceberg.rest.RESTClient;
+import org.apache.iceberg.rest.oauth2.auth.ClientAuthenticator;
+import org.apache.iceberg.rest.oauth2.auth.ClientAuthenticatorFactory;
+import org.apache.iceberg.rest.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.oauth2.endpoint.EndpointProvider;
+import org.apache.iceberg.rest.oauth2.endpoint.EndpointProviderFactory;
+import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
+import org.immutables.value.Value;
+
+@Value.Immutable
+@OAuth2ImmutableStyle
+public abstract class FlowFactory implements AutoCloseable {
+
+  public static FlowFactory of(
+      BasicConfig spec,
+      Clock clock,
+      ScheduledExecutorService executor,
+      Supplier<RESTClient> restClientSupplier) {
+    return ImmutableFlowFactory.builder()
+        .spec(spec)
+        .clock(clock)
+        .executor(executor)
+        .restClientSupplier(restClientSupplier)
+        .build();
+  }
+
+  /** Creates a flow for fetching new tokens. This is used for the initial token fetch. */
+  public InitialFlow createInitialFlow() {
+    return newInitialFlowBuilder()
+        .spec(spec())
+        .clock(clock())
+        .executor(executor())
+        .restClient(restClientSupplier().get())
+        .endpointProvider(endpointProvider())
+        .clientAuthenticator(clientAuthenticator())
+        .build();
+  }
+
+  @Override
+  public void close() {}
+
+  protected abstract BasicConfig spec();
+
+  protected abstract Clock clock();
+
+  protected abstract ScheduledExecutorService executor();
+
+  protected abstract Supplier<RESTClient> restClientSupplier();
+
+  @Value.Default
+  protected EndpointProvider endpointProvider() {
+    return EndpointProviderFactory.createEndpointProvider(spec(), restClientSupplier());
+  }
+
+  @Value.Default
+  protected ClientAuthenticator clientAuthenticator() {
+    return ClientAuthenticatorFactory.createAuthenticator(spec());
+  }
+
+  private AbstractFlow.Builder<? extends InitialFlow, ?> newInitialFlowBuilder() {
+    switch (spec().grantType()) {
+      case CLIENT_CREDENTIALS:
+        return ImmutableClientCredentialsFlow.builder();
+      default:
+        throw new IllegalArgumentException(
+            "Unknown or invalid grant type for initial token fetch: " + spec().grantType());
+    }
+  }
+}
