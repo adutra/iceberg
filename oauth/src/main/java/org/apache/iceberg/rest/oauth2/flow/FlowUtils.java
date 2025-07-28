@@ -16,21 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.rest.oauth2.endpoint;
+package org.apache.iceberg.rest.oauth2.flow;
 
-import java.util.function.Supplier;
-import org.apache.iceberg.rest.RESTClient;
-import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
+import java.security.SecureRandom;
+import java.util.Random;
 
-public final class EndpointProviderFactory {
+public final class FlowUtils {
 
-  private EndpointProviderFactory() {}
+  private static final Random RANDOM = new SecureRandom();
 
-  public static EndpointProvider createEndpointProvider(
-      OAuth2AgentSpec spec, Supplier<RESTClient> restClient) {
-    EndpointProvider.Builder builder = EndpointProvider.builder().restClientSupplier(restClient);
-    spec.basicConfig().issuerUrl().ifPresent(builder::issuerUrl);
-    spec.basicConfig().tokenEndpoint().ifPresent(builder::tokenEndpoint);
-    return builder.build();
+  private FlowUtils() {}
+
+  public static String randomAlphaNumString(int length) {
+    return RANDOM
+        .ints('0', 'z' + 1)
+        .filter(i -> (i <= '9') || (i >= 'A' && i <= 'Z') || (i >= 'a'))
+        .limit(length)
+        .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+        .toString();
   }
 }

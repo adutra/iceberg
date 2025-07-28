@@ -20,7 +20,6 @@ package org.apache.iceberg.rest.oauth2.flow;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.net.URI;
-import java.time.Clock;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -28,8 +27,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTResponse;
+import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.oauth2.auth.ClientAuthenticator;
-import org.apache.iceberg.rest.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.oauth2.config.ConfigUtils;
 import org.apache.iceberg.rest.oauth2.endpoint.EndpointProvider;
 import org.apache.iceberg.rest.oauth2.rest.DefaultTokenResponse;
@@ -44,9 +43,7 @@ abstract class AbstractFlow implements Flow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(AbstractFlow.class);
 
-  abstract BasicConfig spec();
-
-  abstract Clock clock();
+  abstract OAuth2AgentSpec spec();
 
   abstract ScheduledExecutorService executor();
 
@@ -61,14 +58,15 @@ abstract class AbstractFlow implements Flow {
     return CompletableFuture.supplyAsync(
             () -> {
               URI tokenEndpoint = endpointProvider().resolvedTokenEndpoint();
-              builder.extraParameters(spec().extraRequestParameters());
-              ConfigUtils.scopesAsString(spec().scopes()).ifPresent(builder::scope);
+              builder.extraParameters(spec().basicConfig().extraRequestParameters());
+              ConfigUtils.scopesAsString(spec().basicConfig().scopes()).ifPresent(builder::scope);
               Map<String, String> headers = getHeaders();
               clientAuthenticator().authenticate(builder, headers);
               RequestT request = builder.build();
               request.validate();
               LOGGER.debug(
-                  "Invoking token endpoint: headers: {} body: {}",
+                  "[{}] Invoking token endpoint: headers: {} body: {}",
+                  spec().runtimeConfig().agentName(),
                   filterSensitiveData(headers),
                   request);
               @SuppressWarnings("resource")
@@ -82,15 +80,16 @@ abstract class AbstractFlow implements Flow {
             },
             executor())
         .whenComplete(this::log)
-        .thenApply(resp -> resp.asTokens(clock()));
+        .thenApply(resp -> resp.asTokens(spec().runtimeConfig().clock()));
   }
 
   private void log(RESTResponse response, Throwable error) {
     if (LOGGER.isDebugEnabled()) {
+      String agentName = spec().runtimeConfig().agentName();
       if (error == null) {
-        LOGGER.debug("Received response from token endpoint: {}", response);
+        LOGGER.debug("[{}] Received response from token endpoint: {}", agentName, response);
       } else {
-        LOGGER.debug("Error invoking token endpoint: {}", error.toString());
+        LOGGER.debug("[{}] Error invoking token endpoint: {}", agentName, error.toString());
       }
     }
   }
@@ -113,9 +112,7 @@ abstract class AbstractFlow implements Flow {
   interface Builder<F extends AbstractFlow, B extends Builder<F, B>> {
 
     @CanIgnoreReturnValue
-    B spec(BasicConfig spec);
-
-    B clock(Clock clock);
+    B spec(OAuth2AgentSpec spec);
 
     @CanIgnoreReturnValue
     B executor(ScheduledExecutorService executor);

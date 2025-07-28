@@ -16,21 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.rest.oauth2.endpoint;
+package org.apache.iceberg.rest.oauth2.flow;
 
-import java.util.function.Supplier;
-import org.apache.iceberg.rest.RESTClient;
-import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
+import static org.assertj.core.api.Assertions.assertThat;
 
-public final class EndpointProviderFactory {
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
-  private EndpointProviderFactory() {}
+class TestFlowUtils {
 
-  public static EndpointProvider createEndpointProvider(
-      OAuth2AgentSpec spec, Supplier<RESTClient> restClient) {
-    EndpointProvider.Builder builder = EndpointProvider.builder().restClientSupplier(restClient);
-    spec.basicConfig().issuerUrl().ifPresent(builder::issuerUrl);
-    spec.basicConfig().tokenEndpoint().ifPresent(builder::tokenEndpoint);
-    return builder.build();
+  @ParameterizedTest
+  @ValueSource(ints = {1, 5, 10, 15, 20, 100})
+  void testRandomAlphaNumString(int length) {
+    String actual = FlowUtils.randomAlphaNumString(length);
+    assertThat(actual).hasSize(length).matches("^[a-zA-Z0-9]*$");
   }
 }

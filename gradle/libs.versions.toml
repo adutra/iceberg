@@ -28,6 +28,7 @@ antlr413 = "4.13.1" # For Spark 4.0 support
 aircompressor = "0.27"
 apiguardian = "1.1.2"
 arrow = "15.0.2"
+auth0 = "4.5.0"
 avro = "1.12.0"
 assertj-core = "3.27.3"
 awaitility = "4.3.0"
@@ -100,6 +101,7 @@ antlr-antlr413 = { module = "org.antlr:antlr4", version.ref = "antlr413" }
 antlr-runtime413 = { module = "org.antlr:antlr4-runtime", version.ref = "antlr413" }
 arrow-memory-netty = { module = "org.apache.arrow:arrow-memory-netty", version.ref = "arrow" }
 arrow-vector = { module = "org.apache.arrow:arrow-vector", version.ref = "arrow" }
+auth0-jwt = { module = "com.auth0:java-jwt", version.ref = "auth0" }
 avro-avro = { module = "org.apache.avro:avro", version.ref = "avro" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "awssdk-bom" }
 awssdk-s3accessgrants = { module = "software.amazon.s3.accessgrants:aws-s3-accessgrants-java-plugin", version.ref = "awssdk-s3accessgrants" }

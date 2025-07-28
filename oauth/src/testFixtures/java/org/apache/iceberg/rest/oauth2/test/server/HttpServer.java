@@ -25,6 +25,8 @@ public interface HttpServer extends AutoCloseable {
 
   URI rootUrl();
 
+  void reset();
+
   @Override
   void close();
 }

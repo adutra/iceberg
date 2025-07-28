@@ -184,4 +184,22 @@ public final class OAuth2Properties {
      */
     public static final String IDLE_TIMEOUT = TokenRefresh.PREFIX + "idle-timeout";
   }
+
+  /**
+   * Configuration properties for the OAuth2 agent runtime.
+   *
+   * <p>These properties are used to configure the runtime behavior of the OAuth2 agent, such as the
+   * agent name.
+   */
+  @SuppressWarnings("JavaLangClash")
+  public static final class Runtime {
+
+    public static final String PREFIX = OAuth2Properties.PREFIX + "runtime.";
+
+    /**
+     * The distinctive name of the OAuth2 agent. Defaults to {@code iceberg-auth-manager}. This name
+     * is printed in all log messages and user prompts.
+     */
+    public static final String AGENT_NAME = Runtime.PREFIX + "agent-name";
+  }
 }

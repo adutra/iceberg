@@ -19,6 +19,7 @@
 package org.apache.iceberg.rest.oauth2.test;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.time.Clock;
@@ -32,12 +33,16 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.IcebergCoreHooks;
 import org.apache.iceberg.rest.auth.AuthSession;
+import org.apache.iceberg.rest.oauth2.agent.OAuth2Agent;
+import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.oauth2.config.TokenRefreshConfig;
 import org.apache.iceberg.rest.oauth2.endpoint.EndpointProvider;
 import org.apache.iceberg.rest.oauth2.endpoint.EndpointProviderFactory;
 import org.apache.iceberg.rest.oauth2.flow.FlowFactory;
+import org.apache.iceberg.rest.oauth2.flow.FlowUtils;
 import org.apache.iceberg.rest.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableClientCredentialsExpectation;
@@ -110,7 +115,7 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Value.Default
   public ScheduledExecutorService executor() {
-    return ThreadPools.newScheduledPool("token-refresh", executorPoolSize());
+    return ThreadPools.newScheduledPool(agentName() + "-refresh", executorPoolSize());
   }
 
   @Value.Default
@@ -120,7 +125,11 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Value.Lazy
   public EndpointProvider endpointProvider() {
-    return EndpointProviderFactory.createEndpointProvider(basicConfig(), this::httpClient);
+    return EndpointProviderFactory.createEndpointProvider(agentSpec(), this::httpClient);
+  }
+
+  public void reset() {
+    server().reset();
   }
 
   @Override
@@ -171,6 +180,15 @@ public abstract class TestEnvironment implements AutoCloseable {
   @Value.Default
   public String wellKnownPath() {
     return EndpointProvider.WELL_KNOWN_PATHS.get(0);
+  }
+
+  @Value.Default
+  public OAuth2AgentSpec agentSpec() {
+    return OAuth2AgentSpec.builder()
+        .basicConfig(basicConfig())
+        .tokenRefreshConfig(tokenRefreshConfig())
+        .runtimeConfig(runtimeConfig())
+        .build();
   }
 
   @Value.Default
@@ -242,12 +260,34 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   @Value.Default
+  public RuntimeConfig runtimeConfig() {
+    RuntimeConfig.Builder builder =
+        RuntimeConfig.builder().clock(clock()).agentName(agentName()).console(console());
+    return builder.build();
+  }
+
+  @Value.Default
   public Clock clock() {
     return new TestClock(TestConstants.NOW);
   }
 
+  @Value.Default
+  public String agentName() {
+    return "iceberg-auth-manager-" + FlowUtils.randomAlphaNumString(4);
+  }
+
+  @Value.Derived
+  public PrintStream console() {
+    return System.out;
+  }
+
   public FlowFactory createFlowFactory() {
-    return FlowFactory.of(basicConfig(), clock(), executor(), this::httpClient);
+    return FlowFactory.of(agentSpec(), executor(), this::httpClient);
+  }
+
+  public OAuth2Agent createAgent() {
+    OAuth2Agent agent = new OAuth2Agent(agentSpec(), executor(), this::httpClient);
+    return agent;
   }
 
   public void createExpectations() {
