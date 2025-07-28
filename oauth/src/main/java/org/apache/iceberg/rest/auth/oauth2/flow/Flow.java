@@ -28,6 +28,7 @@ import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
  * tokens.
  *
  * @see InitialFlow
+ * @see RefreshFlow
  */
 public interface Flow {
 

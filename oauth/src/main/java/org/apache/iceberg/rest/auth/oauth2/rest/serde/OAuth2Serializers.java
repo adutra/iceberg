@@ -31,6 +31,7 @@ import java.io.IOException;
 import org.apache.iceberg.rest.auth.oauth2.rest.ClientCredentialsTokenRequest;
 import org.apache.iceberg.rest.auth.oauth2.rest.DefaultTokenResponse;
 import org.apache.iceberg.rest.auth.oauth2.rest.MetadataDiscoveryResponse;
+import org.apache.iceberg.rest.auth.oauth2.rest.RefreshTokenRequest;
 
 public final class OAuth2Serializers {
 
@@ -45,6 +46,9 @@ public final class OAuth2Serializers {
             ClientCredentialsTokenRequest.class, new ClientCredentialsTokenRequestSerializer())
         .addDeserializer(
             ClientCredentialsTokenRequest.class, new ClientCredentialsTokenRequestDeserializer())
+        // RefreshTokenRequest
+        .addSerializer(RefreshTokenRequest.class, new RefreshTokenRequestSerializer())
+        .addDeserializer(RefreshTokenRequest.class, new RefreshTokenRequestDeserializer())
         // Responses
         // DefaultTokenResponse
         .addSerializer(DefaultTokenResponse.class, new DefaultTokenResponseSerializer())
@@ -74,6 +78,24 @@ public final class OAuth2Serializers {
         throws IOException {
       JsonNode jsonNode = p.getCodec().readTree(p);
       return ClientCredentialsTokenRequestParser.fromJson(jsonNode);
+    }
+  }
+
+  static class RefreshTokenRequestSerializer extends JsonSerializer<RefreshTokenRequest> {
+    @Override
+    public void serialize(
+        RefreshTokenRequest request, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      RefreshTokenRequestParser.toJson(request, gen);
+    }
+  }
+
+  static class RefreshTokenRequestDeserializer extends JsonDeserializer<RefreshTokenRequest> {
+    @Override
+    public RefreshTokenRequest deserialize(JsonParser p, DeserializationContext context)
+        throws IOException {
+      JsonNode jsonNode = p.getCodec().readTree(p);
+      return RefreshTokenRequestParser.fromJson(jsonNode);
     }
   }
 

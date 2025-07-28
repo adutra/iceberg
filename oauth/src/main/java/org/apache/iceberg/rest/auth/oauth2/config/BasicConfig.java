@@ -21,9 +21,11 @@ package org.apache.iceberg.rest.auth.oauth2.config;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.net.URI;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthentication;
@@ -150,6 +152,7 @@ public interface BasicConfig {
   default BasicConfig validate() {
     ConfigValidator validator = new ConfigValidator();
     BasicConfig basicConfig = validateEndpoints(validator);
+    validateGrantType(validator);
     validateClientCredentials(validator);
     validateTimeout(validator);
     validator.validate();
@@ -176,6 +179,18 @@ public interface BasicConfig {
     }
 
     return basicConfig;
+  }
+
+  private void validateGrantType(ConfigValidator validator) {
+    validator.check(
+        grantType().initial(),
+        OAuth2Properties.Basic.GRANT_TYPE,
+        "grant type must be one of: %s",
+        Arrays.stream(GrantType.values())
+            .filter(GrantType::initial)
+            .map(GrantType::name)
+            .map(String::toLowerCase)
+            .collect(Collectors.joining("', '", "'", "'")));
   }
 
   private void validateClientCredentials(ConfigValidator validator) {

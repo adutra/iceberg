@@ -16,15 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.rest.auth.oauth2.test.expectation;
+package org.apache.iceberg.rest.auth.oauth2.flow;
 
-public abstract class InitialTokenFetchExpectation extends AbstractTokenEndpointExpectation {
+import java.util.concurrent.CompletionStage;
+import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
+import org.apache.iceberg.rest.auth.oauth2.token.Tokens;
+
+/** An interface representing an OAuth2 flow that can be used to refresh existing tokens. */
+public interface RefreshFlow extends Flow {
+
+  /**
+   * Refreshes the current tokens.
+   *
+   * <p>A flow may be stateful or stateless. Stateful flows should clean up internal resources when
+   * the returned {@link CompletionStage} completes.
+   *
+   * @param currentTokens The current tokens. Cannot be null.
+   * @return A future that completes when the tokens are refreshed.
+   */
+  CompletionStage<Tokens> refreshTokens(Tokens currentTokens);
 
   @Override
-  @SuppressWarnings("resource")
-  public void create() {
-    clientAndServer()
-        .when(tokenRequest())
-        .respond(tokenResponse("access_initial", "refresh_initial"));
+  default GrantType grantType() {
+    return GrantType.REFRESH_TOKEN;
   }
 }

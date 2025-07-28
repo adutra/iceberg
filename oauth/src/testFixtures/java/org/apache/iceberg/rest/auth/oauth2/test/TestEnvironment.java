@@ -34,6 +34,7 @@ import org.apache.iceberg.rest.IcebergCoreHooks;
 import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.auth.oauth2.config.TokenRefreshConfig;
 import org.apache.iceberg.rest.auth.oauth2.endpoint.EndpointProvider;
 import org.apache.iceberg.rest.auth.oauth2.endpoint.EndpointProviderFactory;
 import org.apache.iceberg.rest.auth.oauth2.flow.FlowFactory;
@@ -42,6 +43,7 @@ import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableClientCredentialsExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableErrorExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableMetadataDiscoveryExpectation;
+import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableRefreshTokenExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.server.HttpServer;
 import org.apache.iceberg.rest.auth.oauth2.test.server.MockHttpServer;
 import org.apache.iceberg.util.ThreadPools;
@@ -83,6 +85,11 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Value.Default
   public boolean discoveryEnabled() {
+    return true;
+  }
+
+  @Value.Default
+  public boolean returnRefreshTokens() {
     return true;
   }
 
@@ -211,6 +218,30 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   @Value.Default
+  public TokenRefreshConfig tokenRefreshConfig() {
+    return TokenRefreshConfig.builder()
+        .enabled(tokenRefreshEnabled())
+        .accessTokenLifespan(accessTokenLifespan())
+        .minAccessTokenLifespan(accessTokenLifespan())
+        .build();
+  }
+
+  @Value.Default
+  public boolean tokenRefreshEnabled() {
+    return true;
+  }
+
+  @Value.Default
+  public Duration accessTokenLifespan() {
+    return TestConstants.ACCESS_TOKEN_LIFESPAN;
+  }
+
+  @Value.Default
+  public Duration refreshTokenLifespan() {
+    return TestConstants.REFRESH_TOKEN_LIFESPAN;
+  }
+
+  @Value.Default
   public Clock clock() {
     return new TestClock(TestConstants.NOW);
   }
@@ -221,6 +252,7 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   public void createExpectations() {
     ImmutableClientCredentialsExpectation.of(this).create();
+    ImmutableRefreshTokenExpectation.of(this).create();
     createMetadataDiscoveryExpectations();
     createErrorExpectations();
   }
