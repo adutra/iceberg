@@ -34,8 +34,6 @@ public interface ClientRequest extends PostFormRequest {
 
   String CLIENT_ID = "client_id";
   String CLIENT_SECRET = "client_secret";
-  String CLIENT_ASSERTION = "client_assertion";
-  String CLIENT_ASSERTION_TYPE = "client_assertion_type";
 
   /**
    * The client identifier as described in <a

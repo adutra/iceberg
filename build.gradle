@@ -1098,6 +1098,7 @@ project(':iceberg-open-api') {
 }
 
 project(':iceberg-rest-oauth') {
+  apply plugin: 'java-test-fixtures'
 
   test {
     useJUnitPlatform()
