@@ -19,18 +19,54 @@
 package org.apache.iceberg.rest.auth.oauth2.rest;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import java.time.Clock;
+import java.time.Instant;
 import javax.annotation.Nullable;
 import org.apache.iceberg.rest.RESTResponse;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
+import org.apache.iceberg.rest.auth.oauth2.token.AccessToken;
+import org.apache.iceberg.rest.auth.oauth2.token.ImmutableAccessToken;
+import org.apache.iceberg.rest.auth.oauth2.token.ImmutableRefreshToken;
+import org.apache.iceberg.rest.auth.oauth2.token.RefreshToken;
+import org.apache.iceberg.rest.auth.oauth2.token.Tokens;
 import org.immutables.value.Value.Check;
 import org.immutables.value.Value.Redacted;
 
 /**
  * Common interface for successful responses in reply to a {@link TokenRequest}.
  *
+ * <p>A token response is also a flattened representation of a {@link Tokens} pair; one can convert
+ * a {@link TokenResponse} to a {@link Tokens} pair using the {@link #asTokens(Clock)} method.
+ *
  * @see DefaultTokenResponse
  */
 public interface TokenResponse extends RESTResponse {
+
+  /** Convert this response to a {@link Tokens} pair using the provided clock. */
+  default Tokens asTokens(Clock clock) {
+
+    Instant now = clock.instant();
+
+    Integer accessExpiresIn = accessTokenExpiresInSeconds();
+    AccessToken accessToken =
+        ImmutableAccessToken.builder()
+            .tokenType(tokenType())
+            .payload(accessTokenPayload())
+            .expirationTime(accessExpiresIn == null ? null : now.plusSeconds(accessExpiresIn))
+            .build();
+
+    String refreshTokenPayload = refreshTokenPayload();
+    Integer refreshExpiresIn = refreshTokenExpiresInSeconds();
+    RefreshToken refreshToken =
+        refreshTokenPayload == null
+            ? null
+            : ImmutableRefreshToken.builder()
+                .payload(refreshTokenPayload)
+                .expirationTime(refreshExpiresIn == null ? null : now.plusSeconds(refreshExpiresIn))
+                .build();
+
+    return Tokens.of(accessToken, refreshToken);
+  }
 
   /**
    * The type of the token issued as described in <a
