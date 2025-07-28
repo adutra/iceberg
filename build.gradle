@@ -1113,6 +1113,10 @@ project(':iceberg-rest-oauth') {
     compileOnly libs.errorprone.annotations
     compileOnly libs.findbugs.jsr305
 
+    implementation platform(libs.jackson.bom)
+    implementation libs.jackson.core
+    implementation libs.jackson.databind
+
     annotationProcessor libs.immutables.value
     compileOnly libs.immutables.value
 
@@ -1121,6 +1125,10 @@ project(':iceberg-rest-oauth') {
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj.core
     testImplementation libs.mockito.core
+
+    testImplementation platform(libs.jackson.bom)
+    testImplementation libs.jackson.core
+    testImplementation libs.jackson.databind
   }
 }
 
