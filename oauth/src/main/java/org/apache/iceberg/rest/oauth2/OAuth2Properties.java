@@ -19,6 +19,7 @@
 package org.apache.iceberg.rest.oauth2;
 
 import org.apache.iceberg.rest.auth.OAuth2Manager;
+import org.apache.iceberg.rest.oauth2.config.Dialect;
 import org.apache.iceberg.rest.oauth2.grant.GrantCommonNames;
 
 /** Configuration properties for the {@link OAuth2Manager}. */
@@ -33,6 +34,20 @@ public final class OAuth2Properties {
    * as the issuer URL, token endpoint, client ID, and client secret.
    */
   public static final class Basic {
+
+    /**
+     * The initial access token to use. Optional. If this is set, the agent will not attempt to
+     * fetch the first new token from the Authorization server, but will use this token instead.
+     *
+     * <p>This option is mostly useful when migrating from the Iceberg OAuth2 manager to this OAuth2
+     * manager. Always prefer letting the agent fetch an initial token from the configured
+     * Authorization server.
+     *
+     * <p>When this option is set, the token is not validated by the agent, and it's not always
+     * possible to refresh it. It's recommended to use this option only for testing purposes, or if
+     * you know that the token is valid and will not expire too soon.
+     */
+    public static final String TOKEN = PREFIX + "token";
 
     /**
      * OAuth2 issuer URL.
@@ -77,7 +92,10 @@ public final class OAuth2Properties {
      */
     public static final String GRANT_TYPE = PREFIX + "grant-type";
 
-    /** Client ID to use when authenticating against the OAuth2 server. Required. */
+    /**
+     * Client ID to use when authenticating against the OAuth2 server. Required, unless using the
+     * {@linkplain #DIALECT Iceberg OAuth2 dialect}.
+     */
     public static final String CLIENT_ID = PREFIX + "client-id";
 
     /**
@@ -97,6 +115,9 @@ public final class OAuth2Properties {
      *
      * The default is {@code client_secret_basic} if the client is private, or {@code none} if the
      * client is public.
+     *
+     * <p>This property is ignored when dialect is {@link Dialect#ICEBERG_REST} or when a
+     * {@linkplain #TOKEN token} is provided.
      */
     public static final String CLIENT_AUTH = PREFIX + "client-auth";
 
@@ -138,6 +159,31 @@ public final class OAuth2Properties {
      * }</pre>
      */
     public static final String EXTRA_PARAMS_PREFIX = PREFIX + "extra-params.";
+
+    /**
+     * The OAuth2 dialect. Possible values are: {@link Dialect#STANDARD} and {@link
+     * Dialect#ICEBERG_REST}.
+     *
+     * <p>If the Iceberg dialect is selected, the agent will behave exactly like the built-in OAuth2
+     * manager from Iceberg Core. This dialect should only be selected if the token endpoint is
+     * internal to the REST catalog server, and the server is configured to understand this dialect.
+     *
+     * <p>The Iceberg dialect's main differences from standard OAuth2 are:
+     *
+     * <ul>
+     *   <li>Only {@value GrantCommonNames#CLIENT_CREDENTIALS} grant type is supported;
+     *   <li>Token refreshes are done with the {@value GrantCommonNames#TOKEN_EXCHANGE} grant type;
+     *   <li>Token refreshes are done with Bearer authentication, not Basic authentication;
+     *   <li>Public clients are not supported, however client secrets without client IDs are
+     *       supported;
+     *   <li>Client ID and client secret are sent as request body parameters, and not as Basic
+     *       authentication.
+     * </ul>
+     *
+     * Optional. The default value is {@code iceberg_rest} if either {@value #TOKEN} is provided or
+     * {@value #TOKEN_ENDPOINT} contains a relative URI, and {@code standard} otherwise.
+     */
+    public static final String DIALECT = PREFIX + "dialect";
 
     /**
      * Defines how long the agent should wait for tokens to be acquired. Optional, defaults to 5

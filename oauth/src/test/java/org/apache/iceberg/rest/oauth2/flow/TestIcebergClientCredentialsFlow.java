@@ -16,25 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.rest.oauth2.auth;
+package org.apache.iceberg.rest.oauth2.flow;
 
-import java.util.Map;
-import javax.annotation.Nullable;
-import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
-import org.apache.iceberg.rest.oauth2.rest.ClientRequest;
+import static org.apache.iceberg.rest.oauth2.test.TokenAssertions.assertTokens;
+
+import java.util.concurrent.ExecutionException;
+import org.apache.iceberg.rest.oauth2.config.Dialect;
+import org.apache.iceberg.rest.oauth2.test.TestEnvironment;
 import org.apache.iceberg.rest.oauth2.token.Tokens;
-import org.immutables.value.Value;
+import org.junit.jupiter.api.Test;
 
-/** A client authenticator for public clients. */
-@Value.Immutable
-@OAuth2ImmutableStyle
-public abstract class PublicClientAuthenticator implements StandardClientAuthenticator {
+class TestIcebergClientCredentialsFlow {
 
-  @Override
-  public final <R extends ClientRequest, B extends ClientRequest.Builder<R, B>> void authenticate(
-      ClientRequest.Builder<R, B> request,
-      Map<String, String> headers,
-      @Nullable Tokens currentTokens) {
-    request.clientId(clientId());
+  @Test
+  void fetchNewTokens() throws InterruptedException, ExecutionException {
+    try (TestEnvironment env = TestEnvironment.builder().dialect(Dialect.ICEBERG_REST).build();
+        FlowFactory flowFactory = env.createFlowFactory()) {
+      InitialFlow flow = flowFactory.createInitialFlow();
+      Tokens tokens = flow.fetchNewTokens().toCompletableFuture().get();
+      assertTokens(tokens, "access_initial", null);
+    }
   }
 }

@@ -40,4 +40,9 @@ public interface RefreshFlow extends Flow {
   default GrantType grantType() {
     return GrantType.REFRESH_TOKEN;
   }
+
+  /** Returns true if this flow requires a refresh token to be present in the current tokens. */
+  default boolean requiresRefreshToken() {
+    return true;
+  }
 }

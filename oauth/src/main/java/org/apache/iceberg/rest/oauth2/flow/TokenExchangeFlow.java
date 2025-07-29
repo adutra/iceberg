@@ -70,6 +70,6 @@ abstract class TokenExchangeFlow extends AbstractFlow implements InitialFlow {
                   .audience(spec().tokenExchangeConfig().audience().orElse(null))
                   .requestedTokenType(spec().tokenExchangeConfig().requestedTokenType());
             })
-        .thenCompose(builder -> invokeTokenEndpoint(builder, TokenExchangeResponse.class));
+        .thenCompose(request -> invokeTokenEndpoint(request, TokenExchangeResponse.class, null));
   }
 }

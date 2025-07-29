@@ -41,6 +41,7 @@ import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.oauth2.config.ConfigUtils;
+import org.apache.iceberg.rest.oauth2.config.Dialect;
 import org.apache.iceberg.rest.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.oauth2.config.TokenExchangeConfig;
@@ -53,6 +54,8 @@ import org.apache.iceberg.rest.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableClientCredentialsExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableErrorExpectation;
+import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableIcebergClientCredentialsExpectation;
+import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableIcebergRefreshTokenExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableMetadataDiscoveryExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutablePasswordExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableRefreshTokenExpectation;
@@ -97,6 +100,11 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   @Value.Default
+  public Dialect dialect() {
+    return Dialect.STANDARD;
+  }
+
+  @Value.Default
   public boolean privateClient() {
     return true;
   }
@@ -108,7 +116,8 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Value.Default
   public boolean returnRefreshTokens() {
-    return true;
+    // Iceberg REST dialect does not send refresh tokens
+    return dialect() != Dialect.ICEBERG_REST;
   }
 
   @Value.Default
@@ -213,12 +222,16 @@ public abstract class TestEnvironment implements AutoCloseable {
             .scopes(scopes())
             .extraRequestParameters(Map.of("extra1", "value1"))
             .grantType(grantType())
+            .dialect(dialect())
             .minTimeout(timeout())
-            .timeout(timeout())
-            .clientId(clientId());
-
-    if (privateClient()) {
-      builder.clientSecret(clientSecret());
+            .timeout(timeout());
+    if (token().isPresent()) {
+      builder.token(token().get());
+    } else {
+      builder.clientId(clientId());
+      if (privateClient()) {
+        builder.clientSecret(clientSecret());
+      }
     }
 
     clientAuthentication().ifPresent(builder::clientAuthentication);
@@ -242,6 +255,8 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   public abstract Optional<ClientAuthentication> clientAuthentication();
+
+  public abstract Optional<String> token();
 
   @Value.Default
   public List<String> scopes() {
@@ -455,10 +470,21 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   public void createExpectations() {
-    ImmutableClientCredentialsExpectation.of(this).create();
+    if (dialect() == Dialect.STANDARD) {
+      ImmutableClientCredentialsExpectation.of(this).create();
+    } else {
+      ImmutableIcebergClientCredentialsExpectation.of(this).create();
+    }
+
     ImmutablePasswordExpectation.of(this).create();
     ImmutableTokenExchangeExpectation.of(this).create();
-    ImmutableRefreshTokenExpectation.of(this).create();
+
+    if (dialect() == Dialect.STANDARD) {
+      ImmutableRefreshTokenExpectation.of(this).create();
+    } else {
+      ImmutableIcebergRefreshTokenExpectation.of(this).create();
+    }
+
     createMetadataDiscoveryExpectations();
     createErrorExpectations();
   }

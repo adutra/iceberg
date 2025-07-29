@@ -39,7 +39,7 @@ class TestClientSecretBasicAuthenticator {
     assertThat(authenticator.clientId()).isEqualTo(TestConstants.CLIENT_ID1);
     assertThat(authenticator.clientSecret()).isEqualTo(Secret.of(TestConstants.CLIENT_SECRET1));
     Map<String, String> headers = Maps.newHashMap();
-    authenticator.authenticate(ClientCredentialsTokenRequest.builder(), headers);
+    authenticator.authenticate(ClientCredentialsTokenRequest.builder(), headers, null);
     assertThat(headers)
         .containsEntry("Authorization", "Basic " + TestConstants.CLIENT_CREDENTIALS1_BASE_64);
   }

@@ -22,11 +22,13 @@ import static java.util.Collections.singletonList;
 import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.CLIENT_AUTH;
 import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.CLIENT_ID;
 import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.CLIENT_SECRET;
+import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.DIALECT;
 import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.EXTRA_PARAMS_PREFIX;
 import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.GRANT_TYPE;
 import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.ISSUER_URL;
 import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.SCOPE;
 import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.TIMEOUT;
+import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.TOKEN;
 import static org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic.TOKEN_ENDPOINT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -38,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
+import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.oauth2.config.validator.ConfigValidator;
 import org.apache.iceberg.rest.oauth2.grant.GrantType;
@@ -126,6 +129,24 @@ class TestBasicConfig {
             BasicConfig.builder()
                 .clientId("Client1")
                 .clientSecret("s3cr3t")
+                .tokenEndpoint(URI.create("/tokens")),
+            singletonList(
+                "Token endpoint must not start with a slash when it's a relative URL (rest.auth.oauth2.token-endpoint)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientSecret("s3cr3t")
+                .tokenEndpoint(URI.create(ResourcePaths.tokens()))
+                .grantType(GrantType.PASSWORD),
+            singletonList(
+                "Iceberg OAuth2 dialect only supports the 'client_credentials' grant type (rest.auth.oauth2.grant-type / rest.auth.oauth2.dialect)")),
+        Arguments.of(
+            BasicConfig.builder().tokenEndpoint(URI.create(ResourcePaths.tokens())),
+            singletonList(
+                "client secret must not be empty when Iceberg OAuth2 dialect is used (rest.auth.oauth2.client-secret / rest.auth.oauth2.dialect)")),
+        Arguments.of(
+            BasicConfig.builder()
+                .clientId("Client1")
+                .clientSecret("s3cr3t")
                 .issuerUrl(URI.create("https://example.com"))
                 .timeout(Duration.ofSeconds(1)),
             singletonList(
@@ -174,6 +195,50 @@ class TestBasicConfig {
                 .extraRequestParameters(ImmutableMap.of("extra1", "param1", "extra2", "param 2"))
                 .timeout(Duration.ofMinutes(1))
                 .build(),
+            null),
+        // Iceberg OAuth2 dialect
+        Arguments.of(
+            ImmutableMap.builder()
+                .put(CLIENT_SECRET, "w00t")
+                .put(TOKEN_ENDPOINT, ResourcePaths.tokens())
+                .build(),
+            BasicConfig.builder()
+                .clientSecret("w00t")
+                .tokenEndpoint(URI.create(ResourcePaths.tokens()))
+                .dialect(Dialect.ICEBERG_REST)
+                .build(),
+            null),
+        Arguments.of(
+            ImmutableMap.builder()
+                .put(DIALECT, "iceberg_rest")
+                .put(CLIENT_SECRET, "w00t")
+                .put(TOKEN_ENDPOINT, "https://example.com/token")
+                .build(),
+            BasicConfig.builder()
+                .dialect(Dialect.ICEBERG_REST)
+                .clientSecret("w00t")
+                .tokenEndpoint(URI.create("https://example.com/token"))
+                .build(),
+            null),
+        Arguments.of(
+            ImmutableMap.builder().put(DIALECT, "iceberg_rest").put(CLIENT_SECRET, "w00t").build(),
+            BasicConfig.builder()
+                .dialect(Dialect.ICEBERG_REST)
+                .clientSecret("w00t")
+                // no token endpoint + iceberg dialect = internal token endpoint
+                .tokenEndpoint(URI.create(ResourcePaths.tokens()))
+                .build(),
+            null),
+        // Token
+        Arguments.of(
+            ImmutableMap.builder()
+                .put(TOKEN, "token")
+                .put(TOKEN_ENDPOINT, ResourcePaths.tokens())
+                .build(),
+            BasicConfig.builder()
+                .token("token")
+                .tokenEndpoint(URI.create(ResourcePaths.tokens()))
+                .build(),
             null));
   }
 
@@ -192,6 +257,7 @@ class TestBasicConfig {
     BasicConfig base =
         BasicConfig.builder()
             .grantType(GrantType.CLIENT_CREDENTIALS)
+            .dialect(Dialect.STANDARD)
             .clientId("Client1")
             .clientSecret("secret1")
             .issuerUrl(URI.create("https://example1.com"))
@@ -206,6 +272,7 @@ class TestBasicConfig {
     BasicConfig base =
         BasicConfig.builder()
             .grantType(GrantType.PASSWORD)
+            .dialect(Dialect.STANDARD)
             .clientId("Client1")
             .clientSecret("secret1")
             .issuerUrl(URI.create("https://example1.com"))
@@ -217,6 +284,8 @@ class TestBasicConfig {
         Map.of(
             GRANT_TYPE,
             GrantType.CLIENT_CREDENTIALS.name(),
+            DIALECT,
+            Dialect.ICEBERG_REST.name(),
             CLIENT_ID,
             "Client2",
             CLIENT_SECRET,
@@ -234,6 +303,7 @@ class TestBasicConfig {
     BasicConfig expected =
         BasicConfig.builder()
             .grantType(GrantType.CLIENT_CREDENTIALS)
+            .dialect(Dialect.ICEBERG_REST)
             .clientId("Client2")
             .clientSecret("secret2")
             .issuerUrl(URI.create("https://example2.com"))
@@ -249,6 +319,8 @@ class TestBasicConfig {
     BasicConfig base =
         BasicConfig.builder()
             .grantType(GrantType.PASSWORD)
+            .dialect(Dialect.STANDARD)
+            .token("token")
             .clientId("Client1")
             .clientSecret("secret1")
             .issuerUrl(URI.create("https://example1.com"))
@@ -258,6 +330,8 @@ class TestBasicConfig {
             .build();
     Map<String, String> properties =
         Map.of(
+            TOKEN,
+            "",
             CLIENT_AUTH,
             "none",
             CLIENT_SECRET,
@@ -273,10 +347,57 @@ class TestBasicConfig {
     BasicConfig expected =
         BasicConfig.builder()
             .grantType(GrantType.PASSWORD)
+            .dialect(Dialect.STANDARD)
             .clientId("Client1")
             .tokenEndpoint(URI.create("https://example1.com/token"))
             .extraRequestParameters(Map.of("extra1", "value1"))
             .build();
     return Arguments.of(base, properties, expected);
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void testDialect(Map<String, String> properties, Dialect expected) {
+    BasicConfig config = BasicConfig.builder().from(properties).build();
+    assertThat(config.dialect()).isEqualTo(expected);
+  }
+
+  static Stream<Arguments> testDialect() {
+    return Stream.of(
+        // Explicit
+        Arguments.of(
+            Map.of(
+                ISSUER_URL,
+                "https://example.com",
+                CLIENT_ID,
+                "Client",
+                CLIENT_SECRET,
+                "secret",
+                DIALECT,
+                Dialect.STANDARD.name()),
+            Dialect.STANDARD),
+        Arguments.of(
+            Map.of(
+                ISSUER_URL,
+                "https://example.com",
+                CLIENT_SECRET,
+                "secret",
+                DIALECT,
+                Dialect.ICEBERG_REST.name()),
+            Dialect.ICEBERG_REST),
+        // Implicit
+        Arguments.of(
+            Map.of(ISSUER_URL, "https://example.com", CLIENT_ID, "Client", CLIENT_SECRET, "secret"),
+            Dialect.STANDARD),
+        // a token is present => Iceberg dialect
+        Arguments.of(
+            Map.of(ISSUER_URL, "https://example.com", TOKEN, "token"), Dialect.ICEBERG_REST),
+        // token endpoint is relative => Iceberg dialect
+        Arguments.of(
+            Map.of(TOKEN_ENDPOINT, "tokens", CLIENT_SECRET, "secret"), Dialect.ICEBERG_REST),
+        // client secret present without client ID => Iceberg dialect
+        Arguments.of(
+            Map.of(ISSUER_URL, "https://example.com", CLIENT_SECRET, "secret"),
+            Dialect.ICEBERG_REST));
   }
 }

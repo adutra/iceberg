@@ -38,7 +38,7 @@ class TestClientSecretPostAuthenticator {
     assertThat(authenticator.clientId()).isEqualTo(TestConstants.CLIENT_ID1);
     assertThat(authenticator.clientSecret()).isEqualTo(Secret.of(TestConstants.CLIENT_SECRET1));
     ClientCredentialsTokenRequest.Builder builder = ClientCredentialsTokenRequest.builder();
-    authenticator.authenticate(builder, Maps.newHashMap());
+    authenticator.authenticate(builder, Maps.newHashMap(), null);
     assertThat(builder.build())
         .extracting(
             ClientCredentialsTokenRequest::clientId, ClientCredentialsTokenRequest::clientSecret)

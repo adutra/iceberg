@@ -63,6 +63,6 @@ abstract class ResourceOwnerPasswordFlow extends AbstractFlow implements Initial
             .orElseThrow(() -> new IllegalStateException("Password is required"));
     PasswordTokenRequest.Builder request =
         PasswordTokenRequest.builder().username(username).password(password);
-    return invokeTokenEndpoint(request, DefaultTokenResponse.class);
+    return invokeTokenEndpoint(request, DefaultTokenResponse.class, null);
   }
 }

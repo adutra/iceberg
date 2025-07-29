@@ -140,6 +140,14 @@ public abstract class FlowFactory implements AutoCloseable {
   }
 
   private AbstractFlow.Builder<? extends RefreshFlow, ?> newTokenRefreshFlowBuilder() {
-    return ImmutableRefreshTokenFlow.builder();
+    switch (spec().basicConfig().dialect()) {
+      case STANDARD:
+        return ImmutableRefreshTokenFlow.builder();
+      case ICEBERG_REST:
+        return ImmutableIcebergRefreshTokenFlow.builder();
+      default:
+        throw new IllegalArgumentException(
+            "Unknown or invalid dialect: " + spec().basicConfig().dialect());
+    }
   }
 }

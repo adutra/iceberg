@@ -20,40 +20,51 @@ package org.apache.iceberg.rest.oauth2.flow;
 
 import java.util.concurrent.CompletionStage;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
+import org.apache.iceberg.rest.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.oauth2.rest.DefaultTokenResponse;
-import org.apache.iceberg.rest.oauth2.rest.RefreshTokenRequest;
-import org.apache.iceberg.rest.oauth2.token.RefreshToken;
+import org.apache.iceberg.rest.oauth2.rest.TokenExchangeRequest;
+import org.apache.iceberg.rest.oauth2.token.AccessToken;
 import org.apache.iceberg.rest.oauth2.token.Tokens;
+import org.apache.iceberg.rest.oauth2.token.TypedToken;
 import org.immutables.value.Value;
 
 /**
- * An implementation of the <a href="https://datatracker.ietf.org/doc/html/rfc6749#section-6">Token
- * Refresh</a> flow.
+ * A specialized {@link TokenExchangeFlow} that is used to refresh access tokens, for the Iceberg
+ * dialect only.
  */
 @Value.Immutable
 @OAuth2ImmutableStyle
-abstract class RefreshTokenFlow extends AbstractFlow implements RefreshFlow {
+abstract class IcebergRefreshTokenFlow extends AbstractFlow implements RefreshFlow {
 
-  interface Builder extends AbstractFlow.Builder<RefreshTokenFlow, Builder> {}
+  interface Builder extends AbstractFlow.Builder<IcebergRefreshTokenFlow, Builder> {}
+
+  @Override
+  public GrantType grantType() {
+    return GrantType.TOKEN_EXCHANGE;
+  }
 
   @Override
   public CompletionStage<Tokens> refreshTokens(Tokens currentTokens) {
     Preconditions.checkNotNull(currentTokens, "Invalid currentTokens: null");
-    RefreshToken refreshToken = currentTokens.refreshToken();
-    Preconditions.checkNotNull(refreshToken, "Invalid refreshToken: null");
-    RefreshTokenRequest.Builder request =
-        RefreshTokenRequest.builder().refreshToken(refreshToken.payload());
-    return invokeTokenEndpoint(request, DefaultTokenResponse.class, currentTokens)
-        .thenApply(
-            tokens -> {
-              if (tokens.refreshToken() == null) {
-                // If the server did not return a new refresh token,
-                // it means we must keep the current one
-                return Tokens.of(tokens.accessToken(), refreshToken);
-              }
+    AccessToken accessToken = currentTokens.accessToken();
+    Preconditions.checkNotNull(accessToken, "Invalid accessToken: null");
 
-              return tokens;
-            });
+    TypedToken subjectToken = TypedToken.of(accessToken);
+
+    TokenExchangeRequest.Builder request =
+        TokenExchangeRequest.builder()
+            .subjectToken(subjectToken.payload())
+            .subjectTokenType(subjectToken.tokenType())
+            .resource(spec().tokenExchangeConfig().resource().orElse(null))
+            .audience(spec().tokenExchangeConfig().audience().orElse(null))
+            .requestedTokenType(spec().tokenExchangeConfig().requestedTokenType());
+
+    return invokeTokenEndpoint(request, DefaultTokenResponse.class, currentTokens);
+  }
+
+  @Override
+  public boolean requiresRefreshToken() {
+    return false;
   }
 }

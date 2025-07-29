@@ -19,30 +19,38 @@
 package org.apache.iceberg.rest.oauth2.auth;
 
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.oauth2.config.Dialect;
 
 public final class ClientAuthenticatorFactory {
 
   private ClientAuthenticatorFactory() {}
 
   public static ClientAuthenticator createAuthenticator(BasicConfig spec) {
-    ClientAuthentication method = spec.clientAuthentication();
-    switch (method) {
-      case NONE:
-        return ImmutablePublicClientAuthenticator.builder()
-            .clientId(spec.clientId().orElseThrow())
-            .build();
-      case CLIENT_SECRET_BASIC:
-        return ImmutableClientSecretBasicAuthenticator.builder()
-            .clientId(spec.clientId().orElseThrow())
-            .clientSecret(spec.clientSecret().orElseThrow())
-            .build();
-      case CLIENT_SECRET_POST:
-        return ImmutableClientSecretPostAuthenticator.builder()
-            .clientId(spec.clientId().orElseThrow())
-            .clientSecret(spec.clientSecret().orElseThrow())
-            .build();
-      default:
-        throw new IllegalArgumentException("Unsupported client authentication method: " + method);
+    if (spec.dialect() == Dialect.ICEBERG_REST || spec.token().isPresent()) {
+      return ImmutableIcebergClientAuthenticator.builder()
+          .clientId(spec.clientId())
+          .clientSecret(spec.clientSecret())
+          .build();
+    } else {
+      ClientAuthentication method = spec.clientAuthentication();
+      switch (method) {
+        case NONE:
+          return ImmutablePublicClientAuthenticator.builder()
+              .clientId(spec.clientId().orElseThrow())
+              .build();
+        case CLIENT_SECRET_BASIC:
+          return ImmutableClientSecretBasicAuthenticator.builder()
+              .clientId(spec.clientId().orElseThrow())
+              .clientSecret(spec.clientSecret().orElseThrow())
+              .build();
+        case CLIENT_SECRET_POST:
+          return ImmutableClientSecretPostAuthenticator.builder()
+              .clientId(spec.clientId().orElseThrow())
+              .clientSecret(spec.clientSecret().orElseThrow())
+              .build();
+        default:
+          throw new IllegalArgumentException("Unsupported client authentication method: " + method);
+      }
     }
   }
 }

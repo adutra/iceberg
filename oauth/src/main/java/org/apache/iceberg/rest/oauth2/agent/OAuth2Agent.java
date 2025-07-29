@@ -88,12 +88,18 @@ public final class OAuth2Agent implements Closeable {
     name = spec.runtimeConfig().agentName();
     clock = spec.runtimeConfig().clock();
     lastAccess = clock.instant();
-    CompletableFuture<Tokens> tokensFuture =
-        COMPLETED_FUTURE.thenComposeAsync(v -> fetchNewTokens(), executor);
-    this.currentTokensFuture = tokensFuture;
-    tokensFuture
-        .whenComplete(this::log)
-        .whenComplete((tokens, error) -> maybeScheduleTokensRenewal(tokens));
+    if (spec.basicConfig().token().isPresent()) {
+      Tokens currentTokens = Tokens.of(spec.basicConfig().token().get(), null);
+      currentTokensFuture = CompletableFuture.completedFuture(currentTokens);
+      maybeScheduleTokensRenewal(currentTokens);
+    } else {
+      CompletableFuture<Tokens> tokensFuture =
+          COMPLETED_FUTURE.thenComposeAsync(v -> fetchNewTokens(), executor);
+      this.currentTokensFuture = tokensFuture;
+      tokensFuture
+          .whenComplete(this::log)
+          .whenComplete((tokens, error) -> maybeScheduleTokensRenewal(tokens));
+    }
   }
 
   /** Returns the spec used to create this agent. */
@@ -188,11 +194,14 @@ public final class OAuth2Agent implements Closeable {
 
   CompletionStage<Tokens> refreshCurrentTokens(Tokens currentTokens) {
     RefreshFlow flow = flowFactory.createTokenRefreshFlow();
-    RefreshToken refreshToken = currentTokens.refreshToken();
-    if (isRisky(refreshToken, clock.instant())) {
-      LOGGER.debug("[{}] Must fetch new tokens, refresh token is null or almost expired", name);
-      return MUST_FETCH_NEW_TOKENS_FUTURE;
+    if (flow.requiresRefreshToken()) {
+      RefreshToken refreshToken = currentTokens.refreshToken();
+      if (isRisky(refreshToken, clock.instant())) {
+        LOGGER.debug("[{}] Must fetch new tokens, refresh token is null or almost expired", name);
+        return MUST_FETCH_NEW_TOKENS_FUTURE;
+      }
     }
+
     LOGGER.debug("[{}] Refreshing tokens using {}", name, flow.grantType());
     return flow.refreshTokens(currentTokens);
   }
