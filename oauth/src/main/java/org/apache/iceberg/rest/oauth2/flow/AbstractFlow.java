@@ -31,9 +31,9 @@ import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.oauth2.auth.ClientAuthenticator;
 import org.apache.iceberg.rest.oauth2.config.ConfigUtils;
 import org.apache.iceberg.rest.oauth2.endpoint.EndpointProvider;
-import org.apache.iceberg.rest.oauth2.rest.DefaultTokenResponse;
 import org.apache.iceberg.rest.oauth2.rest.PostFormRequest;
 import org.apache.iceberg.rest.oauth2.rest.TokenRequest;
+import org.apache.iceberg.rest.oauth2.rest.TokenResponse;
 import org.apache.iceberg.rest.oauth2.token.Tokens;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +54,7 @@ abstract class AbstractFlow implements Flow {
   abstract ClientAuthenticator clientAuthenticator();
 
   protected <RequestT extends TokenRequest> CompletionStage<Tokens> invokeTokenEndpoint(
-      TokenRequest.Builder<RequestT, ?> builder) {
+      TokenRequest.Builder<RequestT, ?> builder, Class<? extends TokenResponse> responseType) {
     return CompletableFuture.supplyAsync(
             () -> {
               URI tokenEndpoint = endpointProvider().resolvedTokenEndpoint();
@@ -74,7 +74,7 @@ abstract class AbstractFlow implements Flow {
               return client.postForm(
                   tokenEndpoint.toString(),
                   request.asFormParameters(),
-                  DefaultTokenResponse.class,
+                  responseType,
                   headers,
                   FlowErrorHandler.INSTANCE);
             },

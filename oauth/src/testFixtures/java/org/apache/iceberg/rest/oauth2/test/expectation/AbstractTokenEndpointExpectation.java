@@ -50,7 +50,11 @@ public abstract class AbstractTokenEndpointExpectation extends AbstractExpectati
   protected void addRequestHeaders(HttpRequest request) {
     if (testEnvironment().privateClient()) {
       request.withHeader(
-          "Authorization", String.format("Basic %s", TestConstants.CLIENT_CREDENTIALS1_BASE_64));
+          "Authorization",
+          String.format(
+              "Basic (%s|%s)",
+              TestConstants.CLIENT_CREDENTIALS1_BASE_64,
+              TestConstants.CLIENT_CREDENTIALS2_BASE_64));
     }
   }
 

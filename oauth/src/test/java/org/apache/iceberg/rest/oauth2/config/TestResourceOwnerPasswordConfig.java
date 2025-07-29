@@ -61,4 +61,47 @@ class TestResourceOwnerPasswordConfig {
             ResourceOwnerPasswordConfig.builder().username("Alice").password("s3cr3t").build(),
             null));
   }
+
+  @ParameterizedTest
+  @MethodSource
+  void testMerge(
+      ResourceOwnerPasswordConfig base,
+      Map<String, String> properties,
+      ResourceOwnerPasswordConfig expected) {
+    ResourceOwnerPasswordConfig merged = base.merge(properties);
+    assertThat(merged).isEqualTo(expected);
+  }
+
+  static Stream<Arguments> testMerge() {
+    return Stream.of(
+        emptyBase(), emptyProperties(), nonEmptyBaseNonEmptyProperties(), baseCleared());
+  }
+
+  private static Arguments emptyBase() {
+    return Arguments.of(
+        ResourceOwnerPasswordConfig.builder().build(),
+        Map.of(USERNAME, "Alice", PASSWORD, "s3cr3t"),
+        ResourceOwnerPasswordConfig.builder().username("Alice").password("s3cr3t").build());
+  }
+
+  private static Arguments emptyProperties() {
+    return Arguments.of(
+        ResourceOwnerPasswordConfig.builder().username("Alice").password("s3cr3t").build(),
+        Map.of(),
+        ResourceOwnerPasswordConfig.builder().username("Alice").password("s3cr3t").build());
+  }
+
+  private static Arguments nonEmptyBaseNonEmptyProperties() {
+    return Arguments.of(
+        ResourceOwnerPasswordConfig.builder().username("Alice").password("s3cr3t").build(),
+        Map.of(USERNAME, "Bob", PASSWORD, "w00t"),
+        ResourceOwnerPasswordConfig.builder().username("Bob").password("w00t").build());
+  }
+
+  private static Arguments baseCleared() {
+    return Arguments.of(
+        ResourceOwnerPasswordConfig.builder().username("Alice").password("s3cr3t").build(),
+        Map.of(USERNAME, "", PASSWORD, ""),
+        ResourceOwnerPasswordConfig.DEFAULT);
+  }
 }

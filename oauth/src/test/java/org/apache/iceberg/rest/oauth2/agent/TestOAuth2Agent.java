@@ -118,6 +118,98 @@ class TestOAuth2Agent {
 
   @ParameterizedTest
   @CsvSource({"true, true", "true, false", "false, true", "false, false"})
+  void testTokenExchangeStaticSubjectActor(boolean privateClient, boolean returnRefreshTokens) {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.TOKEN_EXCHANGE)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens currentTokens = agent.authenticateInternal();
+      assertTokens(currentTokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "true,  false, CLIENT_CREDENTIALS",
+    "true,  true,  PASSWORD",
+    "true,  false, PASSWORD",
+    "false, true,  PASSWORD",
+    "false, false, PASSWORD"
+  })
+  void testTokenExchangeDynamicSubject(
+      boolean privateClient, boolean returnRefreshTokens, GrantType grantType)
+      throws InterruptedException, ExecutionException {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.TOKEN_EXCHANGE)
+                .subjectToken(null)
+                .subjectGrantType(grantType)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens tokens = agent.authenticateInternal();
+      assertTokens(tokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
+      if (returnRefreshTokens) {
+        tokens = agent.refreshCurrentTokens(tokens).toCompletableFuture().get();
+        assertTokens(tokens, "access_refreshed", "refresh_refreshed");
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "true,  false, CLIENT_CREDENTIALS",
+    "true,  true,  PASSWORD",
+    "true,  false, PASSWORD",
+    "false, true,  PASSWORD",
+    "false, false, PASSWORD"
+  })
+  void testTokenExchangeDynamicActor(
+      boolean privateClient, boolean returnRefreshTokens, GrantType grantType)
+      throws InterruptedException, ExecutionException {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.TOKEN_EXCHANGE)
+                .actorToken(null)
+                .actorGrantType(grantType)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens tokens = agent.authenticateInternal();
+      assertTokens(tokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
+      if (returnRefreshTokens) {
+        tokens = agent.refreshCurrentTokens(tokens).toCompletableFuture().get();
+        assertTokens(tokens, "access_refreshed", "refresh_refreshed");
+      }
+    }
+  }
+
+  @Test
+  void testTokenExchangeUnauthorized() {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.TOKEN_EXCHANGE)
+                .subjectToken("WrongSubjectToken")
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      soft.assertThatThrownBy(agent::authenticate)
+          .asInstanceOf(throwable(OAuth2Exception.class))
+          .extracting(OAuth2Exception::errorResponse)
+          .satisfies(
+              r -> {
+                soft.assertThat(r.type()).isEqualTo("invalid_request");
+                soft.assertThat(r.message()).contains("Invalid request");
+              });
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
   void testRefreshToken(boolean privateClient, boolean returnRefreshTokens)
       throws InterruptedException, ExecutionException {
     try (TestEnvironment env =

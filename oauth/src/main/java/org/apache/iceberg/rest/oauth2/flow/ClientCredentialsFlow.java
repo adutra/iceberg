@@ -22,6 +22,7 @@ import java.util.concurrent.CompletionStage;
 import org.apache.iceberg.rest.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.oauth2.rest.ClientCredentialsTokenRequest;
+import org.apache.iceberg.rest.oauth2.rest.DefaultTokenResponse;
 import org.apache.iceberg.rest.oauth2.token.Tokens;
 import org.immutables.value.Value;
 
@@ -44,6 +45,6 @@ abstract class ClientCredentialsFlow extends AbstractFlow implements InitialFlow
   @Override
   public CompletionStage<Tokens> fetchNewTokens() {
     ClientCredentialsTokenRequest.Builder request = ClientCredentialsTokenRequest.builder();
-    return invokeTokenEndpoint(request);
+    return invokeTokenEndpoint(request, DefaultTokenResponse.class);
   }
 }

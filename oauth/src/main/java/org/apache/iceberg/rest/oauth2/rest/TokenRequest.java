@@ -32,6 +32,7 @@ import org.immutables.value.Value.Check;
  * @see ClientCredentialsTokenRequest
  * @see PasswordTokenRequest
  * @see RefreshTokenRequest
+ * @see TokenExchangeRequest
  */
 public interface TokenRequest extends ClientRequest, RESTRequest {
 

@@ -81,6 +81,16 @@ public interface RuntimeConfig {
     validator.validate();
   }
 
+  /** Merges the given properties into this {@link RuntimeConfig} and returns the result. */
+  default RuntimeConfig merge(Map<String, String> properties) {
+    Preconditions.checkNotNull(properties, "Invalid properties map: null");
+    Builder builder = builder();
+    builder.agentNameOption().set(properties, agentName());
+    builder.clock(clock());
+    builder.console(console());
+    return builder.build();
+  }
+
   static Builder builder() {
     return ImmutableRuntimeConfig.builder();
   }

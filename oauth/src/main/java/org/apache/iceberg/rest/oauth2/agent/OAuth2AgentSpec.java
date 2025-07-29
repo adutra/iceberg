@@ -25,6 +25,7 @@ import org.apache.iceberg.rest.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.oauth2.config.RuntimeConfig;
+import org.apache.iceberg.rest.oauth2.config.TokenExchangeConfig;
 import org.apache.iceberg.rest.oauth2.config.TokenRefreshConfig;
 import org.apache.iceberg.rest.oauth2.config.validator.ConfigValidator;
 import org.apache.iceberg.rest.oauth2.grant.GrantType;
@@ -51,6 +52,12 @@ public interface OAuth2AgentSpec {
   @Value.Default
   default TokenRefreshConfig tokenRefreshConfig() {
     return TokenRefreshConfig.DEFAULT;
+  }
+
+  /** The token exchange configuration. Optional. */
+  @Value.Default
+  default TokenExchangeConfig tokenExchangeConfig() {
+    return TokenExchangeConfig.DEFAULT;
   }
 
   /** The runtime configuration. Optional. */
@@ -81,6 +88,18 @@ public interface OAuth2AgentSpec {
     validator.validate();
   }
 
+  /** Merges the given properties into this {@link OAuth2AgentSpec} and returns the result. */
+  default OAuth2AgentSpec merge(Map<String, String> properties) {
+    Preconditions.checkNotNull(properties, "Invalid properties map: null");
+    return builder()
+        .basicConfig(basicConfig().merge(properties))
+        .resourceOwnerPasswordConfig(resourceOwnerPasswordConfig().merge(properties))
+        .tokenRefreshConfig(tokenRefreshConfig().merge(properties))
+        .tokenExchangeConfig(tokenExchangeConfig().merge(properties))
+        .runtimeConfig(runtimeConfig().merge(properties))
+        .build();
+  }
+
   static Builder builder() {
     return ImmutableOAuth2AgentSpec.builder();
   }
@@ -105,6 +124,7 @@ public interface OAuth2AgentSpec {
           .resourceOwnerPasswordConfig(
               ResourceOwnerPasswordConfig.builder().from(properties).build())
           .tokenRefreshConfig(TokenRefreshConfig.builder().from(properties).build())
+          .tokenExchangeConfig(TokenExchangeConfig.builder().from(properties).build())
           .runtimeConfig(RuntimeConfig.builder().from(properties).build());
     }
 
@@ -116,6 +136,9 @@ public interface OAuth2AgentSpec {
 
     @CanIgnoreReturnValue
     Builder tokenRefreshConfig(TokenRefreshConfig tokenRefreshConfig);
+
+    @CanIgnoreReturnValue
+    Builder tokenExchangeConfig(TokenExchangeConfig tokenExchangeConfig);
 
     @CanIgnoreReturnValue
     Builder runtimeConfig(RuntimeConfig runtimeConfig);

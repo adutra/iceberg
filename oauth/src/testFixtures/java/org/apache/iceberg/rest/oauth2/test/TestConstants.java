@@ -18,27 +18,35 @@
  */
 package org.apache.iceberg.rest.oauth2.test;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import org.apache.iceberg.rest.oauth2.token.TypedToken;
 
 public final class TestConstants {
 
   private TestConstants() {}
 
   public static final String CLIENT_ID1 = "Client1";
+  public static final String CLIENT_ID2 = "Client2";
 
   public static final String CLIENT_SECRET1 = "s3cr3t";
+  public static final String CLIENT_SECRET2 = "sEcrEt";
 
   public static final String USERNAME = "Alice";
   public static final String PASSWORD = "s3cr3t";
 
   public static final String SCOPE1 = "catalog";
+  public static final String SCOPE2 = "session";
 
   public static final String CLIENT_CREDENTIALS1_BASE_64 =
       Base64.getEncoder()
           .encodeToString((CLIENT_ID1 + ":" + CLIENT_SECRET1).getBytes(StandardCharsets.UTF_8));
+  public static final String CLIENT_CREDENTIALS2_BASE_64 =
+      Base64.getEncoder()
+          .encodeToString((CLIENT_ID2 + ":" + CLIENT_SECRET2).getBytes(StandardCharsets.UTF_8));
 
   public static final Instant NOW = Instant.parse("2025-01-01T00:00:00Z");
 
@@ -53,4 +61,13 @@ public final class TestConstants {
       NOW.plusSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS);
   public static final Duration REFRESH_TOKEN_LIFESPAN =
       Duration.ofSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS);
+
+  public static final String SUBJECT_TOKEN = "subject";
+  public static final String ACTOR_TOKEN = "actor";
+  public static final String AUDIENCE = "audience";
+
+  public static final URI SUBJECT_TOKEN_TYPE = TypedToken.URN_ACCESS_TOKEN;
+  public static final URI ACTOR_TOKEN_TYPE = TypedToken.URN_ACCESS_TOKEN;
+  public static final URI REQUESTED_TOKEN_TYPE = TypedToken.URN_ACCESS_TOKEN;
+  public static final URI RESOURCE = URI.create("urn:authmgr:test:resource");
 }

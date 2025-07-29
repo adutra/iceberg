@@ -48,6 +48,18 @@ public interface ResourceOwnerPasswordConfig {
    */
   Optional<Secret> password();
 
+  /**
+   * Merges the given properties into this {@link ResourceOwnerPasswordConfig} and returns the
+   * result.
+   */
+  default ResourceOwnerPasswordConfig merge(Map<String, String> properties) {
+    Preconditions.checkNotNull(properties, "Invalid properties map: null");
+    Builder builder = builder();
+    builder.usernameOption().set(properties, username());
+    builder.passwordOption().set(properties, password());
+    return builder.build();
+  }
+
   static Builder builder() {
     return ImmutableResourceOwnerPasswordConfig.builder();
   }

@@ -29,16 +29,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
+import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.IcebergCoreHooks;
 import org.apache.iceberg.rest.auth.AuthSession;
+import org.apache.iceberg.rest.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.oauth2.agent.OAuth2Agent;
 import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.oauth2.config.ConfigUtils;
 import org.apache.iceberg.rest.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.oauth2.config.RuntimeConfig;
+import org.apache.iceberg.rest.oauth2.config.TokenExchangeConfig;
 import org.apache.iceberg.rest.oauth2.config.TokenRefreshConfig;
 import org.apache.iceberg.rest.oauth2.endpoint.EndpointProvider;
 import org.apache.iceberg.rest.oauth2.endpoint.EndpointProviderFactory;
@@ -51,6 +56,7 @@ import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableErrorExpectation
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableMetadataDiscoveryExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutablePasswordExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableRefreshTokenExpectation;
+import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableTokenExchangeExpectation;
 import org.apache.iceberg.rest.oauth2.test.server.HttpServer;
 import org.apache.iceberg.rest.oauth2.test.server.MockHttpServer;
 import org.apache.iceberg.util.ThreadPools;
@@ -195,6 +201,7 @@ public abstract class TestEnvironment implements AutoCloseable {
         .basicConfig(basicConfig())
         .resourceOwnerPasswordConfig(resourceOwnerConfig())
         .tokenRefreshConfig(tokenRefreshConfig())
+        .tokenExchangeConfig(tokenExchangeConfig())
         .runtimeConfig(runtimeConfig())
         .build();
   }
@@ -284,6 +291,139 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   @Value.Default
+  public TokenExchangeConfig tokenExchangeConfig() {
+    TokenExchangeConfig.Builder builder =
+        TokenExchangeConfig.builder()
+            .subjectTokenType(subjectTokenType())
+            .actorTokenType(actorTokenType())
+            .subjectTokenConfig(subjectTokenConfig())
+            .actorTokenConfig(actorTokenConfig())
+            .requestedTokenType(requestedTokenType());
+    if (subjectToken() != null) {
+      builder.subjectToken(subjectToken());
+    }
+
+    if (actorToken() != null) {
+      builder.actorToken(actorToken());
+    }
+
+    if (audience() != null) {
+      builder.audience(audience());
+    }
+
+    if (resource() != null) {
+      builder.resource(resource());
+    }
+
+    return builder.build();
+  }
+
+  @Value.Default
+  @Nullable
+  public String subjectToken() {
+    return TestConstants.SUBJECT_TOKEN;
+  }
+
+  @Value.Default
+  public URI subjectTokenType() {
+    return TestConstants.SUBJECT_TOKEN_TYPE;
+  }
+
+  @Value.Default
+  public GrantType subjectGrantType() {
+    return GrantType.CLIENT_CREDENTIALS;
+  }
+
+  @Value.Default
+  public String subjectClientId() {
+    return TestConstants.CLIENT_ID2;
+  }
+
+  @Value.Default
+  public String subjectClientSecret() {
+    return TestConstants.CLIENT_SECRET2;
+  }
+
+  @Value.Default
+  public List<String> subjectScopes() {
+    return List.of(TestConstants.SCOPE2);
+  }
+
+  @Value.Default
+  public Map<String, String> subjectTokenConfig() {
+    ImmutableMap.Builder<String, String> builder =
+        ImmutableMap.<String, String>builder()
+            .put(OAuth2Properties.Basic.GRANT_TYPE, subjectGrantType().commonName())
+            .put(OAuth2Properties.Basic.CLIENT_ID, subjectClientId())
+            .put(OAuth2Properties.Basic.CLIENT_SECRET, subjectClientSecret())
+            .put(OAuth2Properties.Basic.EXTRA_PARAMS_PREFIX + "extra2", "value2");
+    ConfigUtils.scopesAsString(subjectScopes())
+        .ifPresent(scope -> builder.put(OAuth2Properties.Basic.SCOPE, scope));
+    return builder.build();
+  }
+
+  @Value.Default
+  @Nullable
+  public String actorToken() {
+    return TestConstants.ACTOR_TOKEN;
+  }
+
+  @Value.Default
+  public URI actorTokenType() {
+    return TestConstants.ACTOR_TOKEN_TYPE;
+  }
+
+  @Value.Default
+  public GrantType actorGrantType() {
+    return GrantType.CLIENT_CREDENTIALS;
+  }
+
+  @Value.Default
+  public String actorClientId() {
+    return TestConstants.CLIENT_ID1;
+  }
+
+  @Value.Default
+  public String actorClientSecret() {
+    return TestConstants.CLIENT_SECRET1;
+  }
+
+  @Value.Default
+  public List<String> actorScopes() {
+    return List.of(TestConstants.SCOPE1);
+  }
+
+  @Value.Default
+  public Map<String, String> actorTokenConfig() {
+    ImmutableMap.Builder<String, String> builder =
+        ImmutableMap.<String, String>builder()
+            .put(OAuth2Properties.Basic.GRANT_TYPE, actorGrantType().commonName())
+            .put(OAuth2Properties.Basic.CLIENT_ID, actorClientId())
+            .put(OAuth2Properties.Basic.CLIENT_SECRET, actorClientSecret())
+            .put(OAuth2Properties.Basic.EXTRA_PARAMS_PREFIX + "extra2", "value2");
+    ConfigUtils.scopesAsString(actorScopes())
+        .ifPresent(scope -> builder.put(OAuth2Properties.Basic.SCOPE, scope));
+    return builder.build();
+  }
+
+  @Value.Default
+  public URI requestedTokenType() {
+    return TestConstants.REQUESTED_TOKEN_TYPE;
+  }
+
+  @Value.Default
+  @Nullable
+  public String audience() {
+    return TestConstants.AUDIENCE;
+  }
+
+  @Value.Default
+  @Nullable
+  public URI resource() {
+    return TestConstants.RESOURCE;
+  }
+
+  @Value.Default
   public RuntimeConfig runtimeConfig() {
     RuntimeConfig.Builder builder =
         RuntimeConfig.builder().clock(clock()).agentName(agentName()).console(console());
@@ -317,6 +457,7 @@ public abstract class TestEnvironment implements AutoCloseable {
   public void createExpectations() {
     ImmutableClientCredentialsExpectation.of(this).create();
     ImmutablePasswordExpectation.of(this).create();
+    ImmutableTokenExchangeExpectation.of(this).create();
     ImmutableRefreshTokenExpectation.of(this).create();
     createMetadataDiscoveryExpectations();
     createErrorExpectations();

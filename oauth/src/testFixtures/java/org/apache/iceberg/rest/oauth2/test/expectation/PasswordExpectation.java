@@ -32,11 +32,14 @@ public abstract class PasswordExpectation extends InitialTokenFetchExpectation {
   @Override
   protected PostFormRequest tokenRequestBody() {
     return ImmutablePasswordTokenRequest.builder()
-        .clientId(testEnvironment().privateClient() ? null : TestConstants.CLIENT_ID1)
+        .clientId(
+            testEnvironment().privateClient()
+                ? null
+                : String.format("(%s|%s)", TestConstants.CLIENT_ID1, TestConstants.CLIENT_ID2))
         .username(TestConstants.USERNAME)
         .password(TestConstants.PASSWORD)
-        .scope(TestConstants.SCOPE1)
-        .putExtraParameter("extra1", "value1")
+        .scope(String.format("(%s|%s)", TestConstants.SCOPE1, TestConstants.SCOPE2))
+        .putExtraParameter("(extra1|extra2)", "(value1|value2)")
         .build();
   }
 }

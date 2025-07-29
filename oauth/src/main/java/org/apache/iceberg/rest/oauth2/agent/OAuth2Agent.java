@@ -111,6 +111,14 @@ public final class OAuth2Agent implements Closeable {
   }
 
   /**
+   * Authenticates the client asynchronously and returns a future that completes when the
+   * authentication completes (either successfully or with an error).
+   */
+  public CompletionStage<AccessToken> authenticateAsync() {
+    return authenticateAsyncInternal().thenApply(Tokens::accessToken);
+  }
+
+  /**
    * Same as {@link #authenticate()} but returns the full {@link Tokens} object, including the
    * refresh token if any. Only intended for testing.
    */
@@ -118,6 +126,16 @@ public final class OAuth2Agent implements Closeable {
     LOGGER.debug("[{}] Authenticating synchronously", name);
     onAgentAccessed();
     return getCurrentTokens();
+  }
+
+  /**
+   * Same as {@link #authenticateAsync()} but returns the full {@link Tokens} object, including the
+   * refresh token if any. Only intended for testing.
+   */
+  CompletionStage<Tokens> authenticateAsyncInternal() {
+    LOGGER.debug("[{}] Authenticating asynchronously", name);
+    onAgentAccessed();
+    return currentTokensFuture;
   }
 
   Tokens getCurrentTokens() {

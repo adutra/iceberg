@@ -150,6 +150,20 @@ public interface TokenRefreshConfig {
     validator.validate();
   }
 
+  /** Merges the given properties into this {@link TokenRefreshConfig} and returns the result. */
+  default TokenRefreshConfig merge(Map<String, String> properties) {
+    Preconditions.checkNotNull(properties, "Invalid properties map: null");
+    Builder builder = builder();
+    builder.enabledOption().set(properties, enabled());
+    builder.accessTokenLifespanOption().set(properties, accessTokenLifespan());
+    builder.safetyMarginOption().set(properties, safetyMargin());
+    builder.idleTimeoutOption().set(properties, idleTimeout());
+    builder.minAccessTokenLifespan(minAccessTokenLifespan());
+    builder.minRefreshDelay(minRefreshDelay());
+    builder.minIdleTimeout(minIdleTimeout());
+    return builder.build();
+  }
+
   static Builder builder() {
     return ImmutableTokenRefreshConfig.builder();
   }

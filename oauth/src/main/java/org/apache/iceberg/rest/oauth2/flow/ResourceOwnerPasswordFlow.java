@@ -22,6 +22,7 @@ import java.util.concurrent.CompletionStage;
 import org.apache.iceberg.rest.oauth2.config.Secret;
 import org.apache.iceberg.rest.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
+import org.apache.iceberg.rest.oauth2.rest.DefaultTokenResponse;
 import org.apache.iceberg.rest.oauth2.rest.PasswordTokenRequest;
 import org.apache.iceberg.rest.oauth2.token.Tokens;
 import org.immutables.value.Value;
@@ -62,6 +63,6 @@ abstract class ResourceOwnerPasswordFlow extends AbstractFlow implements Initial
             .orElseThrow(() -> new IllegalStateException("Password is required"));
     PasswordTokenRequest.Builder request =
         PasswordTokenRequest.builder().username(username).password(password);
-    return invokeTokenEndpoint(request);
+    return invokeTokenEndpoint(request, DefaultTokenResponse.class);
   }
 }
