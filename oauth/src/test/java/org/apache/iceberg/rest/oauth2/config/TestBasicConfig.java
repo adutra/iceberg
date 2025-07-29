@@ -119,7 +119,7 @@ class TestBasicConfig {
                 .tokenEndpoint(URI.create("https://example.com/token"))
                 .grantType(GrantType.REFRESH_TOKEN),
             singletonList(
-                "grant type must be one of: 'client_credentials' (rest.auth.oauth2.grant-type)")),
+                "grant type must be one of: 'client_credentials', 'password' (rest.auth.oauth2.grant-type)")),
         Arguments.of(
             BasicConfig.builder()
                 .clientId("Client1")
@@ -152,7 +152,7 @@ class TestBasicConfig {
             ImmutableMap.builder()
                 .put(ISSUER_URL, "https://example.com/")
                 .put(TOKEN_ENDPOINT, "https://example.com/token")
-                .put(GRANT_TYPE, "client_credentials")
+                .put(GRANT_TYPE, "password")
                 .put(CLIENT_ID, "Client")
                 .put(CLIENT_SECRET, "w00t")
                 .put(SCOPE, "test")
@@ -165,7 +165,7 @@ class TestBasicConfig {
             BasicConfig.builder()
                 .issuerUrl(URI.create("https://example.com/"))
                 .tokenEndpoint(URI.create("https://example.com/token"))
-                .grantType(GrantType.CLIENT_CREDENTIALS)
+                .grantType(GrantType.PASSWORD)
                 .clientId("Client")
                 .clientSecret("w00t")
                 .scopes(List.of("test"))

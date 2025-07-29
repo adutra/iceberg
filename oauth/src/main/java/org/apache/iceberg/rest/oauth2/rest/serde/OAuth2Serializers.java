@@ -31,6 +31,7 @@ import java.io.IOException;
 import org.apache.iceberg.rest.oauth2.rest.ClientCredentialsTokenRequest;
 import org.apache.iceberg.rest.oauth2.rest.DefaultTokenResponse;
 import org.apache.iceberg.rest.oauth2.rest.MetadataDiscoveryResponse;
+import org.apache.iceberg.rest.oauth2.rest.PasswordTokenRequest;
 import org.apache.iceberg.rest.oauth2.rest.RefreshTokenRequest;
 
 public final class OAuth2Serializers {
@@ -46,6 +47,9 @@ public final class OAuth2Serializers {
             ClientCredentialsTokenRequest.class, new ClientCredentialsTokenRequestSerializer())
         .addDeserializer(
             ClientCredentialsTokenRequest.class, new ClientCredentialsTokenRequestDeserializer())
+        // PasswordTokenRequest
+        .addSerializer(PasswordTokenRequest.class, new PasswordTokenRequestSerializer())
+        .addDeserializer(PasswordTokenRequest.class, new PasswordTokenRequestDeserializer())
         // RefreshTokenRequest
         .addSerializer(RefreshTokenRequest.class, new RefreshTokenRequestSerializer())
         .addDeserializer(RefreshTokenRequest.class, new RefreshTokenRequestDeserializer())
@@ -78,6 +82,24 @@ public final class OAuth2Serializers {
         throws IOException {
       JsonNode jsonNode = p.getCodec().readTree(p);
       return ClientCredentialsTokenRequestParser.fromJson(jsonNode);
+    }
+  }
+
+  static class PasswordTokenRequestSerializer extends JsonSerializer<PasswordTokenRequest> {
+    @Override
+    public void serialize(
+        PasswordTokenRequest request, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      PasswordTokenRequestParser.toJson(request, gen);
+    }
+  }
+
+  static class PasswordTokenRequestDeserializer extends JsonDeserializer<PasswordTokenRequest> {
+    @Override
+    public PasswordTokenRequest deserialize(JsonParser p, DeserializationContext context)
+        throws IOException {
+      JsonNode jsonNode = p.getCodec().readTree(p);
+      return PasswordTokenRequestParser.fromJson(jsonNode);
     }
   }
 

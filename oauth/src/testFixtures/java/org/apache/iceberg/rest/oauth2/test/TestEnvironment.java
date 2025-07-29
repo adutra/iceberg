@@ -37,6 +37,7 @@ import org.apache.iceberg.rest.oauth2.agent.OAuth2Agent;
 import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.oauth2.config.TokenRefreshConfig;
 import org.apache.iceberg.rest.oauth2.endpoint.EndpointProvider;
@@ -48,6 +49,7 @@ import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableClientCredentialsExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableErrorExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableMetadataDiscoveryExpectation;
+import org.apache.iceberg.rest.oauth2.test.expectation.ImmutablePasswordExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableRefreshTokenExpectation;
 import org.apache.iceberg.rest.oauth2.test.server.HttpServer;
 import org.apache.iceberg.rest.oauth2.test.server.MockHttpServer;
@@ -86,6 +88,11 @@ public abstract class TestEnvironment implements AutoCloseable {
   @Value.Default
   public GrantType grantType() {
     return GrantType.CLIENT_CREDENTIALS;
+  }
+
+  @Value.Default
+  public boolean privateClient() {
+    return true;
   }
 
   @Value.Default
@@ -186,6 +193,7 @@ public abstract class TestEnvironment implements AutoCloseable {
   public OAuth2AgentSpec agentSpec() {
     return OAuth2AgentSpec.builder()
         .basicConfig(basicConfig())
+        .resourceOwnerPasswordConfig(resourceOwnerConfig())
         .tokenRefreshConfig(tokenRefreshConfig())
         .runtimeConfig(runtimeConfig())
         .build();
@@ -200,8 +208,11 @@ public abstract class TestEnvironment implements AutoCloseable {
             .grantType(grantType())
             .minTimeout(timeout())
             .timeout(timeout())
-            .clientId(clientId())
-            .clientSecret(clientSecret());
+            .clientId(clientId());
+
+    if (privateClient()) {
+      builder.clientSecret(clientSecret());
+    }
 
     clientAuthentication().ifPresent(builder::clientAuthentication);
     if (discoveryEnabled()) {
@@ -260,6 +271,19 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   @Value.Default
+  public ResourceOwnerPasswordConfig resourceOwnerConfig() {
+    return ResourceOwnerPasswordConfig.builder()
+        .username(TestConstants.USERNAME)
+        .password(password())
+        .build();
+  }
+
+  @Value.Default
+  public String password() {
+    return TestConstants.PASSWORD;
+  }
+
+  @Value.Default
   public RuntimeConfig runtimeConfig() {
     RuntimeConfig.Builder builder =
         RuntimeConfig.builder().clock(clock()).agentName(agentName()).console(console());
@@ -292,6 +316,7 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   public void createExpectations() {
     ImmutableClientCredentialsExpectation.of(this).create();
+    ImmutablePasswordExpectation.of(this).create();
     ImmutableRefreshTokenExpectation.of(this).create();
     createMetadataDiscoveryExpectations();
     createErrorExpectations();

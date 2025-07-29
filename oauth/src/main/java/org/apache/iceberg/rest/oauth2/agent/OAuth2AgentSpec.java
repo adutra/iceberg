@@ -23,8 +23,11 @@ import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.oauth2.config.TokenRefreshConfig;
+import org.apache.iceberg.rest.oauth2.config.validator.ConfigValidator;
+import org.apache.iceberg.rest.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.immutables.value.Value;
 
@@ -38,6 +41,12 @@ public interface OAuth2AgentSpec {
    */
   BasicConfig basicConfig();
 
+  /** The resource owner configuration. Required for the {@link GrantType#PASSWORD} grant type. */
+  @Value.Default
+  default ResourceOwnerPasswordConfig resourceOwnerPasswordConfig() {
+    return ResourceOwnerPasswordConfig.DEFAULT;
+  }
+
   /** The token refresh configuration. Optional. */
   @Value.Default
   default TokenRefreshConfig tokenRefreshConfig() {
@@ -48,6 +57,28 @@ public interface OAuth2AgentSpec {
   @Value.Default
   default RuntimeConfig runtimeConfig() {
     return RuntimeConfig.DEFAULT;
+  }
+
+  @Value.Check
+  default void validate() {
+    ConfigValidator validator = new ConfigValidator();
+    // We only need to validate constraints that span multiple configuration options here;
+    // individual configuration options are validated in their respective classes.
+    if (basicConfig().grantType() == GrantType.PASSWORD) {
+      validator.check(
+          resourceOwnerPasswordConfig().username().isPresent()
+              && !resourceOwnerPasswordConfig().username().get().isEmpty(),
+          OAuth2Properties.ResourceOwnerPassword.USERNAME,
+          "username must be set if grant type is '%s'",
+          GrantType.PASSWORD.commonName());
+      validator.check(
+          resourceOwnerPasswordConfig().password().isPresent(),
+          OAuth2Properties.ResourceOwnerPassword.PASSWORD,
+          "password must be set if grant type is '%s'",
+          GrantType.PASSWORD.commonName());
+    }
+
+    validator.validate();
   }
 
   static Builder builder() {
@@ -71,12 +102,17 @@ public interface OAuth2AgentSpec {
     default Builder from(Map<String, String> properties) {
       Preconditions.checkNotNull(properties, "Invalid properties map: null");
       return basicConfig(BasicConfig.builder().from(properties).build())
+          .resourceOwnerPasswordConfig(
+              ResourceOwnerPasswordConfig.builder().from(properties).build())
           .tokenRefreshConfig(TokenRefreshConfig.builder().from(properties).build())
           .runtimeConfig(RuntimeConfig.builder().from(properties).build());
     }
 
     @CanIgnoreReturnValue
     Builder basicConfig(BasicConfig basicConfig);
+
+    @CanIgnoreReturnValue
+    Builder resourceOwnerPasswordConfig(ResourceOwnerPasswordConfig resourceOwnerPasswordConfig);
 
     @CanIgnoreReturnValue
     Builder tokenRefreshConfig(TokenRefreshConfig tokenRefreshConfig);

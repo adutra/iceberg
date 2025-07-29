@@ -92,6 +92,8 @@ public abstract class FlowFactory implements AutoCloseable {
     switch (spec().basicConfig().grantType()) {
       case CLIENT_CREDENTIALS:
         return ImmutableClientCredentialsFlow.builder();
+      case PASSWORD:
+        return ImmutableResourceOwnerPasswordFlow.builder();
       default:
         throw new IllegalArgumentException(
             "Unknown or invalid grant type for initial token fetch: "

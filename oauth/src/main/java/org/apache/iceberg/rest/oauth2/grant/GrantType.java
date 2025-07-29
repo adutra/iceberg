@@ -23,6 +23,7 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 public enum GrantType {
   CLIENT_CREDENTIALS(GrantCanonicalNames.CLIENT_CREDENTIALS, GrantCommonNames.CLIENT_CREDENTIALS),
+  PASSWORD(GrantCanonicalNames.PASSWORD, GrantCommonNames.PASSWORD),
   REFRESH_TOKEN(GrantCanonicalNames.REFRESH_TOKEN, GrantCommonNames.REFRESH_TOKEN);
 
   private final String canonicalName;

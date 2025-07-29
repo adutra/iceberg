@@ -38,6 +38,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iceberg.rest.oauth2.agent.OAuth2Agent.MustFetchNewTokensException;
 import org.apache.iceberg.rest.oauth2.flow.OAuth2Exception;
+import org.apache.iceberg.rest.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.oauth2.test.TestClock;
 import org.apache.iceberg.rest.oauth2.test.TestConstants;
 import org.apache.iceberg.rest.oauth2.test.TestEnvironment;
@@ -50,7 +51,7 @@ import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith(SoftAssertionsExtension.class)
 class TestOAuth2Agent {
@@ -82,11 +83,49 @@ class TestOAuth2Agent {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void testRefreshToken(boolean returnRefreshTokens)
+  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
+  void testPassword(boolean privateClient, boolean returnRefreshTokens) {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.PASSWORD)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens currentTokens = agent.authenticateInternal();
+      assertTokens(currentTokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
+    }
+  }
+
+  @Test
+  void testPasswordUnauthorized() {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.PASSWORD)
+                .password("WrongPassword")
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      soft.assertThatThrownBy(agent::authenticate)
+          .asInstanceOf(throwable(OAuth2Exception.class))
+          .extracting(OAuth2Exception::errorResponse)
+          .satisfies(
+              r -> {
+                soft.assertThat(r.type()).isEqualTo("invalid_request");
+                soft.assertThat(r.message()).contains("Invalid request");
+              });
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
+  void testRefreshToken(boolean privateClient, boolean returnRefreshTokens)
       throws InterruptedException, ExecutionException {
     try (TestEnvironment env =
-            TestEnvironment.builder().returnRefreshTokens(returnRefreshTokens).build();
+            TestEnvironment.builder()
+                .grantType(GrantType.PASSWORD)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
         OAuth2Agent agent = env.createAgent()) {
       Tokens currentTokens =
           Tokens.of(

@@ -28,5 +28,6 @@ public final class GrantCommonNames {
   private GrantCommonNames() {}
 
   public static final String CLIENT_CREDENTIALS = GrantCanonicalNames.CLIENT_CREDENTIALS;
+  public static final String PASSWORD = GrantCanonicalNames.PASSWORD;
   public static final String REFRESH_TOKEN = GrantCanonicalNames.REFRESH_TOKEN;
 }

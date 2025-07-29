@@ -19,7 +19,7 @@
 package org.apache.iceberg.rest.oauth2.test.expectation;
 
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
-import org.apache.iceberg.rest.oauth2.rest.ImmutableRefreshTokenRequest;
+import org.apache.iceberg.rest.oauth2.rest.ImmutablePasswordTokenRequest;
 import org.apache.iceberg.rest.oauth2.rest.PostFormRequest;
 import org.apache.iceberg.rest.oauth2.test.TestConstants;
 import org.immutables.value.Value;
@@ -27,20 +27,14 @@ import org.immutables.value.Value;
 @Value.Immutable
 @OAuth2ImmutableStyle
 @SuppressWarnings("resource")
-public abstract class RefreshTokenExpectation extends AbstractTokenEndpointExpectation {
-
-  @Override
-  public void create() {
-    clientAndServer()
-        .when(tokenRequest())
-        .respond(tokenResponse("access_refreshed", "refresh_refreshed"));
-  }
+public abstract class PasswordExpectation extends InitialTokenFetchExpectation {
 
   @Override
   protected PostFormRequest tokenRequestBody() {
-    return ImmutableRefreshTokenRequest.builder()
+    return ImmutablePasswordTokenRequest.builder()
         .clientId(testEnvironment().privateClient() ? null : TestConstants.CLIENT_ID1)
-        .refreshToken("refresh_.*")
+        .username(TestConstants.USERNAME)
+        .password(TestConstants.PASSWORD)
         .scope(TestConstants.SCOPE1)
         .putExtraParameter("extra1", "value1")
         .build();
