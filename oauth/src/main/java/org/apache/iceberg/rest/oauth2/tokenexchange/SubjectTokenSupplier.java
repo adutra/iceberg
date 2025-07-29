@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 import org.apache.iceberg.rest.RESTClient;
+import org.apache.iceberg.rest.oauth2.agent.OAuth2Agent;
 import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.immutables.value.Value;
@@ -41,6 +42,16 @@ public abstract class SubjectTokenSupplier extends AbstractTokenSupplier {
         .mainSpec(spec)
         .executor(executor)
         .restClientSupplier(restClientSupplier)
+        .build();
+  }
+
+  @Override
+  public SubjectTokenSupplier copy() {
+    @SuppressWarnings("resource")
+    OAuth2Agent agent = tokenAgent();
+    return ImmutableSubjectTokenSupplier.builder()
+        .from(this)
+        .tokenAgent(agent == null ? null : agent.copy())
         .build();
   }
 

@@ -23,6 +23,11 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.iceberg.catalog.SessionCatalog;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.oauth2.OAuth2Properties.Basic;
 import org.apache.iceberg.rest.oauth2.token.TypedToken;
 
 public final class TestConstants {
@@ -40,6 +45,7 @@ public final class TestConstants {
 
   public static final String SCOPE1 = "catalog";
   public static final String SCOPE2 = "session";
+  public static final String SCOPE3 = "table";
 
   public static final String CLIENT_CREDENTIALS1_BASE_64 =
       Base64.getEncoder()
@@ -70,4 +76,18 @@ public final class TestConstants {
   public static final URI ACTOR_TOKEN_TYPE = TypedToken.URN_ACCESS_TOKEN;
   public static final URI REQUESTED_TOKEN_TYPE = TypedToken.URN_ACCESS_TOKEN;
   public static final URI RESOURCE = URI.create("urn:authmgr:test:resource");
+
+  public static final String WAREHOUSE = "warehouse1";
+  public static final TableIdentifier TABLE_IDENTIFIER = TableIdentifier.of("namespace1", "table1");
+
+  public static final SessionCatalog.SessionContext SESSION_CONTEXT =
+      new SessionCatalog.SessionContext(
+          UUID.randomUUID().toString(),
+          "user",
+          Map.of(
+              Basic.CLIENT_ID,
+              TestConstants.CLIENT_ID2,
+              Basic.CLIENT_SECRET,
+              TestConstants.CLIENT_SECRET2),
+          Map.of(Basic.SCOPE, TestConstants.SCOPE2));
 }

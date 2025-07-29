@@ -85,6 +85,18 @@ public abstract class FlowFactory implements AutoCloseable {
     }
   }
 
+  @SuppressWarnings("resource")
+  public FlowFactory copy() {
+    SubjectTokenSupplier subjectTokenSupplier = subjectTokenSupplier();
+    ActorTokenSupplier actorTokenSupplier = actorTokenSupplier();
+    return ImmutableFlowFactory.builder()
+        .from(this)
+        // Copy the token suppliers to also create copies of their internal agents.
+        .subjectTokenSupplier(subjectTokenSupplier == null ? null : subjectTokenSupplier.copy())
+        .actorTokenSupplier(actorTokenSupplier == null ? null : actorTokenSupplier.copy())
+        .build();
+  }
+
   protected abstract OAuth2AgentSpec spec();
 
   protected abstract ScheduledExecutorService executor();

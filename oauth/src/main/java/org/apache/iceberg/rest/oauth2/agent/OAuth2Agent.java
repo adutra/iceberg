@@ -102,9 +102,41 @@ public final class OAuth2Agent implements Closeable {
     }
   }
 
+  /** Copy constructor. */
+  @SuppressWarnings("FutureReturnValueIgnored")
+  private OAuth2Agent(OAuth2Agent toCopy) {
+    LOGGER.debug("[{}] Copying agent", toCopy.name);
+    spec = toCopy.spec;
+    executor = toCopy.executor;
+    flowFactory = toCopy.flowFactory.copy();
+    name = toCopy.name;
+    clock = toCopy.clock;
+    lastAccess = toCopy.lastAccess;
+    lastWarn = toCopy.lastWarn;
+    tokenRefreshFuture = null;
+    Tokens currentTokens = Futures.getNow(toCopy.currentTokensFuture);
+    CompletableFuture<Tokens> tokensFuture;
+    tokensFuture =
+        currentTokens != null
+            ? CompletableFuture.completedFuture(currentTokens)
+            : CompletableFuture.supplyAsync(this::fetchNewTokens, executor)
+                .thenCompose(Function.identity());
+    this.currentTokensFuture = tokensFuture;
+    tokensFuture.whenComplete((tokens, error) -> maybeScheduleTokensRenewal(tokens));
+  }
+
   /** Returns the spec used to create this agent. */
   public OAuth2AgentSpec spec() {
     return spec;
+  }
+
+  /**
+   * Creates a copy of this agent. The copy will share the same spec, executor and REST client
+   * supplier as the original agent, as well as its current tokens, if any. If token refresh is
+   * enabled, the copy will create its own token refresh schedule.
+   */
+  public OAuth2Agent copy() {
+    return new OAuth2Agent(this);
   }
 
   /**

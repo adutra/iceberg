@@ -58,6 +58,13 @@ public abstract class AbstractTokenSupplier implements AutoCloseable {
   }
 
   /**
+   * Returns a copy of this token supplier. The copy will share the same spec, executor and REST
+   * client supplier as the original supplier, as well as its static token, if any. If the token is
+   * dynamic, the original agent will be copied.
+   */
+  public abstract AbstractTokenSupplier copy();
+
+  /**
    * Returns the agent to use for fetching the token. Returns null if the token is static or not
    * configured.
    */

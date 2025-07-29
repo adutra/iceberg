@@ -37,6 +37,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.rest.oauth2.agent.OAuth2Agent.MustFetchNewTokensException;
 import org.apache.iceberg.rest.oauth2.config.Dialect;
 import org.apache.iceberg.rest.oauth2.flow.OAuth2Exception;
@@ -301,6 +302,120 @@ class TestOAuth2Agent {
       // (using token exchange with the static token as subject token)
       Tokens refreshed = agent.refreshCurrentTokens(actual).toCompletableFuture().get();
       assertTokens(refreshed, "access_refreshed", null);
+    }
+  }
+
+  /**
+   * Tests copying an agent before and after closing the original agent. The typical use case for
+   * copying an agent is when reusing an init session as a catalog session, so the init session is
+   * already closed when it's copied. But we also want to test the case where the init session is
+   * not yet closed when it's copied, since nothing in the API prevents that.
+   */
+  @Test
+  void testCopyAfterSuccessfulAuth() throws InterruptedException, ExecutionException {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.TOKEN_EXCHANGE)
+                .subjectToken(null)
+                .actorToken(null)
+                .subjectGrantType(GrantType.PASSWORD)
+                .build();
+        OAuth2Agent agent1 = env.createAgent()) {
+      Tokens tokens = agent1.authenticateInternal();
+      // 1) Test copy before close
+      try (OAuth2Agent agent2 = agent1.copy()) {
+        // Should have the same tokens instance
+        soft.assertThat(agent2.authenticateInternal()).isSameAs(tokens);
+        // Now close agent1
+        agent1.close();
+        // Should still have the same tokens instance, and not throw
+        soft.assertThat(agent2.authenticateInternal()).isSameAs(tokens);
+        // Should have a token refresh future
+        soft.assertThat(agent2).extracting("tokenRefreshFuture").isNotNull();
+        // Should be able to refresh tokens
+        assertTokens(
+            agent2.refreshCurrentTokens(tokens).toCompletableFuture().get(),
+            "access_refreshed",
+            "refresh_refreshed");
+        // Should be able to fetch new tokens
+        soft.assertThat(agent2.fetchNewTokens().toCompletableFuture().get()).isEqualTo(tokens);
+      }
+      // 2) Test copy after close
+      try (OAuth2Agent agent3 = agent1.copy()) {
+        // Should have the same tokens instance
+        soft.assertThat(agent3.authenticateInternal()).isSameAs(tokens);
+        // Should have a token refresh future
+        soft.assertThat(agent3).extracting("tokenRefreshFuture").isNotNull();
+        // Should be able to refresh tokens
+        assertTokens(
+            agent3.refreshCurrentTokens(tokens).toCompletableFuture().get(),
+            "access_refreshed",
+            "refresh_refreshed");
+        // Should be able to fetch new tokens
+        soft.assertThat(agent3.fetchNewTokens().toCompletableFuture().get()).isEqualTo(tokens);
+      }
+    }
+  }
+
+  /**
+   * Tests copying an agent before and after closing the original agent, when the original agent
+   * failed to authenticate. This is a rather contrived scenario since in practice, a failed init
+   * session would cause the catalog initialization to fail; but it's possible in theory, so we
+   * should add tests for it.
+   */
+  @Test
+  @SuppressWarnings("checkstyle:NestedTryDepth")
+  void testCopyAfterFailedAuth() throws InterruptedException, ExecutionException {
+    try (TestEnvironment env =
+        TestEnvironment.builder()
+            .grantType(GrantType.TOKEN_EXCHANGE)
+            .subjectToken(null)
+            .actorToken(null)
+            .createDefaultExpectations(false)
+            .build()) {
+      // Emulate success fetching metadata, but failure on initial token fetch
+      env.createMetadataDiscoveryExpectations();
+      env.createErrorExpectations();
+      try (OAuth2Agent agent1 = env.createAgent()) {
+        soft.assertThatThrownBy(agent1::authenticateInternal)
+            .isInstanceOf(RESTException.class)
+            .hasMessageContaining("Invalid request");
+        // Restore expectations so that copied agents can fetch tokens
+        env.reset();
+        env.createExpectations();
+        // 1) Test copy before close
+        try (OAuth2Agent agent2 = agent1.copy()) {
+          // Should be able to fetch tokens even if the original agent failed
+          soft.assertThat(agent2.authenticateInternal()).isNotNull();
+          // Now close agent1
+          agent1.close();
+          // Should still have tokens
+          Tokens tokens = agent2.authenticateInternal();
+          soft.assertThat(tokens).isNotNull();
+          // Should have a token refresh future
+          soft.assertThat(agent2).extracting("tokenRefreshFuture").isNotNull();
+          // Should be able to refresh tokens
+          assertTokens(
+              agent2.refreshCurrentTokens(tokens).toCompletableFuture().get(),
+              "access_refreshed",
+              "refresh_refreshed");
+          // Should be able to fetch new tokens
+          soft.assertThat(agent2.fetchNewTokens().toCompletableFuture().get()).isEqualTo(tokens);
+        }
+        // 2) Test copy after close
+        try (OAuth2Agent agent3 = agent1.copy()) {
+          // Should be able to fetch tokens even if the original agent failed
+          Tokens tokens = agent3.authenticateInternal();
+          soft.assertThat(tokens).isNotNull();
+          // Should be able to refresh tokens
+          assertTokens(
+              agent3.refreshCurrentTokens(tokens).toCompletableFuture().get(),
+              "access_refreshed",
+              "refresh_refreshed");
+          // Should be able to fetch new tokens
+          soft.assertThat(agent3.fetchNewTokens().toCompletableFuture().get()).isEqualTo(tokens);
+        }
+      }
     }
   }
 
