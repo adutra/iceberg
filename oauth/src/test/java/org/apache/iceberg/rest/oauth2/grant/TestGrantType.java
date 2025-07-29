@@ -54,6 +54,12 @@ class TestGrantType {
     assertThat(grantType.initial()).isEqualTo(expectedInitial);
   }
 
+  @ParameterizedTest
+  @MethodSource("requiresUserInteractionTestCases")
+  void testRequiresUserInteraction(GrantType grantType, boolean expectedRequiresUserInteraction) {
+    assertThat(grantType.requiresUserInteraction()).isEqualTo(expectedRequiresUserInteraction);
+  }
+
   static Stream<Arguments> configNameTestCases() {
     return Stream.of(
         // Test canonical names
@@ -62,6 +68,8 @@ class TestGrantType {
         Arguments.of("password", GrantType.PASSWORD),
         Arguments.of("PASSWORD", GrantType.PASSWORD),
         Arguments.of("refresh_token", GrantType.REFRESH_TOKEN),
+        Arguments.of("authorization_code", GrantType.AUTHORIZATION_CODE),
+        Arguments.of("AUTHORIZATION_CODE", GrantType.AUTHORIZATION_CODE),
         Arguments.of("REFRESH_TOKEN", GrantType.REFRESH_TOKEN),
         Arguments.of("urn:ietf:params:oauth:grant-type:token-exchange", GrantType.TOKEN_EXCHANGE),
         Arguments.of("token_exchange", GrantType.TOKEN_EXCHANGE),
@@ -72,7 +80,17 @@ class TestGrantType {
     return Stream.of(
         Arguments.of(GrantType.CLIENT_CREDENTIALS, true),
         Arguments.of(GrantType.PASSWORD, true),
+        Arguments.of(GrantType.AUTHORIZATION_CODE, true),
         Arguments.of(GrantType.REFRESH_TOKEN, false),
         Arguments.of(GrantType.TOKEN_EXCHANGE, true));
+  }
+
+  static Stream<Arguments> requiresUserInteractionTestCases() {
+    return Stream.of(
+        Arguments.of(GrantType.CLIENT_CREDENTIALS, false),
+        Arguments.of(GrantType.PASSWORD, false),
+        Arguments.of(GrantType.AUTHORIZATION_CODE, true),
+        Arguments.of(GrantType.REFRESH_TOKEN, false),
+        Arguments.of(GrantType.TOKEN_EXCHANGE, false));
   }
 }

@@ -36,6 +36,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.rest.oauth2.agent.OAuth2Agent.MustFetchNewTokensException;
@@ -45,6 +46,7 @@ import org.apache.iceberg.rest.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.oauth2.test.TestClock;
 import org.apache.iceberg.rest.oauth2.test.TestConstants;
 import org.apache.iceberg.rest.oauth2.test.TestEnvironment;
+import org.apache.iceberg.rest.oauth2.test.user.UserBehavior;
 import org.apache.iceberg.rest.oauth2.token.AccessToken;
 import org.apache.iceberg.rest.oauth2.token.RefreshToken;
 import org.apache.iceberg.rest.oauth2.token.Tokens;
@@ -125,6 +127,51 @@ class TestOAuth2Agent {
                 soft.assertThat(r.type()).isEqualTo("invalid_request");
                 soft.assertThat(r.message()).contains("Invalid request");
               });
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
+  void testAuthorizationCode(boolean privateClient, boolean returnRefreshTokens) {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.AUTHORIZATION_CODE)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens currentTokens = agent.authenticateInternal();
+      assertTokens(currentTokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
+    }
+  }
+
+  @Test
+  void testAuthorizationCodeTimeout() {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.AUTHORIZATION_CODE)
+                .timeout(Duration.ofMillis(10))
+                .forceInactiveUser(true)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      soft.assertThatThrownBy(agent::authenticate)
+          .hasMessage("Timed out waiting for an access token")
+          .cause()
+          .isInstanceOf(TimeoutException.class);
+    }
+  }
+
+  @Test
+  void testAuthorizationCodeUnauthorized() {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.AUTHORIZATION_CODE)
+                .userBehavior(UserBehavior.builder().emulateFailure(true).build())
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      soft.assertThatThrownBy(agent::authenticate)
+          .isInstanceOf(OAuth2Exception.class)
+          .hasMessageContaining("OAuth2 request failed: Invalid request");
     }
   }
 

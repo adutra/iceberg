@@ -93,8 +93,13 @@ public final class OAuth2Agent implements Closeable {
       currentTokensFuture = CompletableFuture.completedFuture(currentTokens);
       maybeScheduleTokensRenewal(currentTokens);
     } else {
+      // when user interaction is not required, token fetch can happen immediately;
+      // otherwise, it will be deferred until authenticate() is called the first time,
+      // in order to avoid bothering the user with a login prompt before the agent is actually used.
+      boolean requiresUserInteraction = spec.basicConfig().grantType().requiresUserInteraction();
+      CompletableFuture<?> agentReady = requiresUserInteraction ? agentAccessed : COMPLETED_FUTURE;
       CompletableFuture<Tokens> tokensFuture =
-          COMPLETED_FUTURE.thenComposeAsync(v -> fetchNewTokens(), executor);
+          agentReady.thenComposeAsync(v -> fetchNewTokens(), executor);
       this.currentTokensFuture = tokensFuture;
       tokensFuture
           .whenComplete(this::log)
@@ -221,7 +226,13 @@ public final class OAuth2Agent implements Closeable {
   CompletionStage<Tokens> fetchNewTokens() {
     InitialFlow flow = flowFactory.createInitialFlow();
     LOGGER.debug("[{}] Fetching new access token using {}", name, flow.grantType());
-    return flow.fetchNewTokens();
+    CompletionStage<Tokens> newTokensStage = flow.fetchNewTokens();
+    // If the flow requires user interaction, update the last access time once the flow completes,
+    // in order to better reflect when the agent was actually accessed for the last time.
+    // This prevents the agent from going to sleep too early when the user is interacting with it.
+    return spec.basicConfig().grantType().requiresUserInteraction()
+        ? newTokensStage.whenComplete((tokens, error) -> lastAccess = clock.instant())
+        : newTokensStage;
   }
 
   CompletionStage<Tokens> refreshCurrentTokens(Tokens currentTokens) {

@@ -31,6 +31,9 @@ public final class EndpointProviderFactory {
     EndpointProvider.Builder builder = EndpointProvider.builder().restClientSupplier(restClient);
     spec.basicConfig().issuerUrl().ifPresent(builder::issuerUrl);
     spec.basicConfig().tokenEndpoint().ifPresent(builder::tokenEndpoint);
+    spec.authorizationCodeConfig()
+        .authorizationEndpoint()
+        .ifPresent(builder::authorizationEndpoint);
     return builder.build();
   }
 }

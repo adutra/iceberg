@@ -83,6 +83,17 @@ class TestOAuth2AgentSpec {
                 .resourceOwnerPasswordConfig(
                     ResourceOwnerPasswordConfig.builder().username("Alice").build()),
             singletonList(
-                "password must be set if grant type is 'password' (rest.auth.oauth2.resource-owner.password)")));
+                "password must be set if grant type is 'password' (rest.auth.oauth2.resource-owner.password)")),
+        Arguments.of(
+            OAuth2AgentSpec.builder()
+                .basicConfig(
+                    BasicConfig.builder()
+                        .grantType(GrantType.AUTHORIZATION_CODE)
+                        .tokenEndpoint(URI.create("https://issuer.com/token"))
+                        .clientId("Client1")
+                        .clientSecret("s3cr3t")
+                        .build()),
+            singletonList(
+                "either issuer URL or authorization endpoint must be set if grant type is 'authorization_code' (rest.auth.oauth2.issuer-url / rest.auth.oauth2.auth-code.endpoint)")));
   }
 }

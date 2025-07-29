@@ -20,11 +20,16 @@ package org.apache.iceberg.rest.oauth2.test.expectation;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import org.apache.hc.core5.http.NameValuePair;
+import org.apache.hc.core5.net.WWWFormCodec;
 import org.apache.iceberg.rest.IcebergCoreTestHooks;
 import org.apache.iceberg.rest.RESTResponse;
 import org.apache.iceberg.rest.oauth2.rest.PostFormRequest;
+import org.mockserver.model.HttpMessage;
 import org.mockserver.model.JsonBody;
 import org.mockserver.model.Parameter;
 import org.mockserver.model.ParameterBody;
@@ -48,5 +53,20 @@ public final class ExpectationUtils {
             .map(entry -> Parameter.param(entry.getKey(), entry.getValue()))
             .collect(Collectors.toList());
     return ParameterBody.params(parameters);
+  }
+
+  public static List<NameValuePair> decodeBodyParameters(HttpMessage<?, ?> httpMessage) {
+    // See https://github.com/mock-server/mockserver/issues/1468
+    String body = httpMessage.getBodyAsString();
+    return WWWFormCodec.parse(body, StandardCharsets.UTF_8);
+  }
+
+  @Nullable
+  public static String findFirstParameterByName(List<NameValuePair> params, String name) {
+    return params.stream()
+        .filter(pair -> pair.getName().equals(name))
+        .map(NameValuePair::getValue)
+        .findFirst()
+        .orElse(null);
   }
 }

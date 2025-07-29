@@ -28,6 +28,7 @@ import org.immutables.value.Value.Redacted;
  * Common interface for requests using where the client may authenticate with request body
  * parameters.
  *
+ * @see AuthorizationCodeTokenRequest
  * @see ClientCredentialsTokenRequest
  * @see PasswordTokenRequest
  * @see RefreshTokenRequest

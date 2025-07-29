@@ -16,21 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.rest.oauth2.grant;
+package org.apache.iceberg.rest.oauth2.config;
 
-/**
- * Common names for OAuth2 grant types, used in the configuration. These names are accepted in
- * configuration options for the sake of simplicity, although they are not necessarily the same as
- * the names used in the OAuth2 specification.
- */
-public final class GrantCommonNames {
+import java.util.Locale;
+import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
-  private GrantCommonNames() {}
+public enum PkceTransformation {
+  S256("S256"),
+  PLAIN("plain"),
+  ;
 
-  public static final String CLIENT_CREDENTIALS = GrantCanonicalNames.CLIENT_CREDENTIALS;
-  public static final String PASSWORD = GrantCanonicalNames.PASSWORD;
-  public static final String AUTHORIZATION_CODE = GrantCanonicalNames.AUTHORIZATION_CODE;
-  public static final String REFRESH_TOKEN = GrantCanonicalNames.REFRESH_TOKEN;
+  private final String canonicalName;
 
-  public static final String TOKEN_EXCHANGE = "token_exchange";
+  PkceTransformation(String canonicalName) {
+    this.canonicalName = canonicalName;
+  }
+
+  public String canonicalName() {
+    return canonicalName;
+  }
+
+  public static PkceTransformation fromConfigName(String name) {
+    Preconditions.checkNotNull(name, "Invalid PKCE transformation name: null");
+    try {
+      return valueOf(name.toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException ignore) {
+      throw new IllegalArgumentException("Unknown PKCE transformation: " + name);
+    }
+  }
 }

@@ -135,6 +135,8 @@ public abstract class FlowFactory implements AutoCloseable {
         return ImmutableClientCredentialsFlow.builder();
       case PASSWORD:
         return ImmutableResourceOwnerPasswordFlow.builder();
+      case AUTHORIZATION_CODE:
+        return ImmutableAuthorizationCodeFlow.builder();
       case TOKEN_EXCHANGE:
         SubjectTokenSupplier subjectTokenSupplier =
             Preconditions.checkNotNull(

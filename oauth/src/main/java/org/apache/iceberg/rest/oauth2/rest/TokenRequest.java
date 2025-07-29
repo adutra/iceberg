@@ -31,6 +31,7 @@ import org.immutables.value.Value.Check;
  *
  * @see ClientCredentialsTokenRequest
  * @see PasswordTokenRequest
+ * @see AuthorizationCodeTokenRequest
  * @see RefreshTokenRequest
  * @see TokenExchangeRequest
  */

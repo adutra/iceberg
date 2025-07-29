@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import java.io.IOException;
+import org.apache.iceberg.rest.oauth2.rest.AuthorizationCodeTokenRequest;
 import org.apache.iceberg.rest.oauth2.rest.ClientCredentialsTokenRequest;
 import org.apache.iceberg.rest.oauth2.rest.DefaultTokenResponse;
 import org.apache.iceberg.rest.oauth2.rest.MetadataDiscoveryResponse;
@@ -58,6 +59,11 @@ public final class OAuth2Serializers {
         // TokenExchangeRequest
         .addSerializer(TokenExchangeRequest.class, new TokenExchangeRequestSerializer())
         .addDeserializer(TokenExchangeRequest.class, new TokenExchangeRequestDeserializer())
+        // AuthorizationCodeTokenRequest
+        .addSerializer(
+            AuthorizationCodeTokenRequest.class, new AuthorizationCodeTokenRequestSerializer())
+        .addDeserializer(
+            AuthorizationCodeTokenRequest.class, new AuthorizationCodeTokenRequestDeserializer())
         // Responses
         // DefaultTokenResponse
         .addSerializer(DefaultTokenResponse.class, new DefaultTokenResponseSerializer())
@@ -144,6 +150,26 @@ public final class OAuth2Serializers {
         throws IOException {
       JsonNode jsonNode = p.getCodec().readTree(p);
       return TokenExchangeRequestParser.fromJson(jsonNode);
+    }
+  }
+
+  static class AuthorizationCodeTokenRequestSerializer
+      extends JsonSerializer<AuthorizationCodeTokenRequest> {
+    @Override
+    public void serialize(
+        AuthorizationCodeTokenRequest request, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      AuthorizationCodeTokenRequestParser.toJson(request, gen);
+    }
+  }
+
+  static class AuthorizationCodeTokenRequestDeserializer
+      extends JsonDeserializer<AuthorizationCodeTokenRequest> {
+    @Override
+    public AuthorizationCodeTokenRequest deserialize(JsonParser p, DeserializationContext context)
+        throws IOException {
+      JsonNode jsonNode = p.getCodec().readTree(p);
+      return AuthorizationCodeTokenRequestParser.fromJson(jsonNode);
     }
   }
 

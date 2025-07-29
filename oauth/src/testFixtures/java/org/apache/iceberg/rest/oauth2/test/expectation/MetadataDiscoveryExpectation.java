@@ -38,7 +38,8 @@ public abstract class MetadataDiscoveryExpectation extends AbstractExpectation {
       ImmutableMetadataDiscoveryResponse.Builder builder =
           ImmutableMetadataDiscoveryResponse.builder()
               .issuerUrl(issuerUrl)
-              .tokenEndpoint(testEnvironment().tokenEndpoint());
+              .tokenEndpoint(testEnvironment().tokenEndpoint())
+              .authorizationEndpoint(testEnvironment().authorizationEndpoint());
 
       clientAndServer()
           .when(

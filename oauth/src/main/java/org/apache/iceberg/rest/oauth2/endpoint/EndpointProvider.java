@@ -30,6 +30,7 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.relocated.com.google.common.collect.Lists;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.oauth2.flow.FlowErrorHandler;
+import org.apache.iceberg.rest.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.oauth2.rest.MetadataDiscoveryResponse;
 import org.immutables.value.Value;
@@ -65,11 +66,24 @@ public abstract class EndpointProvider {
    */
   protected abstract Optional<URI> tokenEndpoint();
 
+  /**
+   * The authorization endpoint as provided in the configuration. Only used when the grant type is
+   * {@link GrantType#AUTHORIZATION_CODE}. Either this or the issuer URL must be configured for the
+   * endpoint provider to work.
+   */
+  protected abstract Optional<URI> authorizationEndpoint();
+
   protected abstract Supplier<RESTClient> restClientSupplier();
 
   @Value.Lazy
   public URI resolvedTokenEndpoint() {
     return tokenEndpoint().orElseGet(() -> openIdProviderMetadata().tokenEndpoint());
+  }
+
+  @Value.Lazy
+  public URI resolvedAuthorizationEndpoint() {
+    return authorizationEndpoint()
+        .orElseGet(() -> openIdProviderMetadata().authorizationEndpoint());
   }
 
   @Value.Lazy
@@ -120,6 +134,9 @@ public abstract class EndpointProvider {
 
     @CanIgnoreReturnValue
     Builder tokenEndpoint(URI tokenEndpoint);
+
+    @CanIgnoreReturnValue
+    Builder authorizationEndpoint(URI authorizationEndpoint);
 
     @CanIgnoreReturnValue
     Builder restClientSupplier(Supplier<RESTClient> restClient);

@@ -19,9 +19,12 @@
 package org.apache.iceberg.rest.oauth2.agent;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.oauth2.OAuth2Properties;
+import org.apache.iceberg.rest.oauth2.OAuth2Properties.AuthorizationCode;
+import org.apache.iceberg.rest.oauth2.config.AuthorizationCodeConfig;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.oauth2.config.RuntimeConfig;
@@ -46,6 +49,15 @@ public interface OAuth2AgentSpec {
   @Value.Default
   default ResourceOwnerPasswordConfig resourceOwnerPasswordConfig() {
     return ResourceOwnerPasswordConfig.DEFAULT;
+  }
+
+  /**
+   * The authorization code configuration. Required for the {@link GrantType#AUTHORIZATION_CODE}
+   * grant type.
+   */
+  @Value.Default
+  default AuthorizationCodeConfig authorizationCodeConfig() {
+    return AuthorizationCodeConfig.DEFAULT;
   }
 
   /** The token refresh configuration. Optional. */
@@ -85,6 +97,15 @@ public interface OAuth2AgentSpec {
           GrantType.PASSWORD.commonName());
     }
 
+    if (basicConfig().grantType() == GrantType.AUTHORIZATION_CODE) {
+      validator.check(
+          basicConfig().issuerUrl().isPresent()
+              || authorizationCodeConfig().authorizationEndpoint().isPresent(),
+          List.of(OAuth2Properties.Basic.ISSUER_URL, AuthorizationCode.ENDPOINT),
+          "either issuer URL or authorization endpoint must be set if grant type is '%s'",
+          GrantType.AUTHORIZATION_CODE.commonName());
+    }
+
     validator.validate();
   }
 
@@ -94,6 +115,7 @@ public interface OAuth2AgentSpec {
     return builder()
         .basicConfig(basicConfig().merge(properties))
         .resourceOwnerPasswordConfig(resourceOwnerPasswordConfig().merge(properties))
+        .authorizationCodeConfig(authorizationCodeConfig().merge(properties))
         .tokenRefreshConfig(tokenRefreshConfig().merge(properties))
         .tokenExchangeConfig(tokenExchangeConfig().merge(properties))
         .runtimeConfig(runtimeConfig().merge(properties))
@@ -123,6 +145,7 @@ public interface OAuth2AgentSpec {
       return basicConfig(BasicConfig.builder().from(properties).build())
           .resourceOwnerPasswordConfig(
               ResourceOwnerPasswordConfig.builder().from(properties).build())
+          .authorizationCodeConfig(AuthorizationCodeConfig.builder().from(properties).build())
           .tokenRefreshConfig(TokenRefreshConfig.builder().from(properties).build())
           .tokenExchangeConfig(TokenExchangeConfig.builder().from(properties).build())
           .runtimeConfig(RuntimeConfig.builder().from(properties).build());
@@ -133,6 +156,9 @@ public interface OAuth2AgentSpec {
 
     @CanIgnoreReturnValue
     Builder resourceOwnerPasswordConfig(ResourceOwnerPasswordConfig resourceOwnerPasswordConfig);
+
+    @CanIgnoreReturnValue
+    Builder authorizationCodeConfig(AuthorizationCodeConfig authorizationCodeConfig);
 
     @CanIgnoreReturnValue
     Builder tokenRefreshConfig(TokenRefreshConfig tokenRefreshConfig);

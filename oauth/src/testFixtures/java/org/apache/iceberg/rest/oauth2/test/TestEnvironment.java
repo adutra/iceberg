@@ -45,9 +45,11 @@ import org.apache.iceberg.rest.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.oauth2.agent.OAuth2Agent;
 import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.oauth2.auth.ClientAuthentication;
+import org.apache.iceberg.rest.oauth2.config.AuthorizationCodeConfig;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.oauth2.config.ConfigUtils;
 import org.apache.iceberg.rest.oauth2.config.Dialect;
+import org.apache.iceberg.rest.oauth2.config.PkceTransformation;
 import org.apache.iceberg.rest.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.oauth2.config.TokenExchangeConfig;
@@ -58,6 +60,7 @@ import org.apache.iceberg.rest.oauth2.flow.FlowFactory;
 import org.apache.iceberg.rest.oauth2.flow.FlowUtils;
 import org.apache.iceberg.rest.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
+import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableAuthorizationCodeExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableClientCredentialsExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableConfigEndpointExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableErrorExpectation;
@@ -70,6 +73,9 @@ import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableRefreshTokenExpe
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableTokenExchangeExpectation;
 import org.apache.iceberg.rest.oauth2.test.server.HttpServer;
 import org.apache.iceberg.rest.oauth2.test.server.MockHttpServer;
+import org.apache.iceberg.rest.oauth2.test.user.InteractiveUserEmulator;
+import org.apache.iceberg.rest.oauth2.test.user.UserBehavior;
+import org.apache.iceberg.rest.oauth2.test.user.UserEmulator;
 import org.apache.iceberg.util.ThreadPools;
 import org.immutables.value.Value;
 
@@ -170,6 +176,8 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Override
   public void close() {
+    user().close();
+
     try {
       httpClient().close();
     } catch (IOException e) {
@@ -219,6 +227,11 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   @Value.Default
+  public URI authorizationEndpoint() {
+    return authorizationServerUrl().resolve("protocol/openid-connect/auth");
+  }
+
+  @Value.Default
   public URI discoveryEndpoint() {
     return authorizationServerUrl().resolve(wellKnownPath());
   }
@@ -246,6 +259,7 @@ public abstract class TestEnvironment implements AutoCloseable {
     return OAuth2AgentSpec.builder()
         .basicConfig(basicConfig())
         .resourceOwnerPasswordConfig(resourceOwnerConfig())
+        .authorizationCodeConfig(authorizationCodeConfig())
         .tokenRefreshConfig(tokenRefreshConfig())
         .tokenExchangeConfig(tokenExchangeConfig())
         .runtimeConfig(runtimeConfig())
@@ -340,6 +354,29 @@ public abstract class TestEnvironment implements AutoCloseable {
   @Value.Default
   public String password() {
     return TestConstants.PASSWORD;
+  }
+
+  @Value.Default
+  public AuthorizationCodeConfig authorizationCodeConfig() {
+    AuthorizationCodeConfig.Builder builder =
+        AuthorizationCodeConfig.builder()
+            .pkceEnabled(pkceEnabled())
+            .pkceTransformation(pkceTransformation());
+    if (!discoveryEnabled()) {
+      builder.authorizationEndpoint(authorizationEndpoint());
+    }
+
+    return builder.build();
+  }
+
+  @Value.Default
+  public boolean pkceEnabled() {
+    return true;
+  }
+
+  @Value.Default
+  public PkceTransformation pkceTransformation() {
+    return PkceTransformation.S256;
   }
 
   @Value.Default
@@ -494,7 +531,53 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Value.Derived
   public PrintStream console() {
-    return System.out;
+    return user().console();
+  }
+
+  @Value.Default
+  public boolean forceInactiveUser() {
+    return false;
+  }
+
+  @Value.Default
+  public UserBehavior userBehavior() {
+    return UserBehavior.DEFAULT;
+  }
+
+  @Value.Default
+  public UserEmulator user() {
+    if (forceInactiveUser()) {
+      return UserEmulator.INACTIVE;
+    } else {
+      GrantType mainGrant = basicConfig().grantType();
+      GrantType subjectGrant =
+          mainGrant == GrantType.TOKEN_EXCHANGE
+                  && tokenExchangeConfig().subjectToken().isEmpty()
+                  && tokenExchangeConfig()
+                      .subjectTokenConfig()
+                      .containsKey(OAuth2Properties.Basic.GRANT_TYPE)
+              ? GrantType.fromConfigName(
+                  tokenExchangeConfig().subjectTokenConfig().get(OAuth2Properties.Basic.GRANT_TYPE))
+              : GrantType.CLIENT_CREDENTIALS;
+      GrantType actorGrant =
+          mainGrant == GrantType.TOKEN_EXCHANGE
+                  && tokenExchangeConfig().actorToken().isEmpty()
+                  && tokenExchangeConfig()
+                      .actorTokenConfig()
+                      .containsKey(OAuth2Properties.Basic.GRANT_TYPE)
+              ? GrantType.fromConfigName(
+                  tokenExchangeConfig().actorTokenConfig().get(OAuth2Properties.Basic.GRANT_TYPE))
+              : GrantType.CLIENT_CREDENTIALS;
+      // If any of the grants require user interaction, use an interactive user emulator
+      // Otherwise, use an inactive user emulator.
+      if (mainGrant.requiresUserInteraction()
+          || subjectGrant.requiresUserInteraction()
+          || actorGrant.requiresUserInteraction()) {
+        return new InteractiveUserEmulator(userBehavior());
+      }
+    }
+
+    return UserEmulator.INACTIVE;
   }
 
   @Value.Default
@@ -530,6 +613,15 @@ public abstract class TestEnvironment implements AutoCloseable {
   public RESTCatalog createCatalog(boolean initialize) {
     RESTCatalog catalog =
         new RESTCatalog(sessionContext(), config -> newHttpClientBuilder(config).build());
+    UserEmulator user = user();
+    user.addErrorListener(
+        e -> {
+          try {
+            catalog.close();
+          } catch (IOException ex) {
+            throw new RuntimeException(ex);
+          }
+        });
     if (initialize) {
       catalog.initialize("catalog-" + FlowUtils.randomAlphaNumString(4), catalogProperties());
     }
@@ -543,6 +635,7 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   public OAuth2Agent createAgent() {
     OAuth2Agent agent = new OAuth2Agent(agentSpec(), executor(), this::httpClient);
+    user().addErrorListener(e -> agent.close());
     return agent;
   }
 
@@ -554,6 +647,7 @@ public abstract class TestEnvironment implements AutoCloseable {
     }
 
     ImmutablePasswordExpectation.of(this).create();
+    ImmutableAuthorizationCodeExpectation.of(this).create();
     ImmutableTokenExchangeExpectation.of(this).create();
 
     if (dialect() == Dialect.STANDARD) {

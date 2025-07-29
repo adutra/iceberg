@@ -16,21 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.rest.oauth2.grant;
+package org.apache.iceberg.rest.oauth2.test.user;
+
+import java.io.PrintStream;
+import java.util.function.Consumer;
 
 /**
- * Common names for OAuth2 grant types, used in the configuration. These names are accepted in
- * configuration options for the sake of simplicity, although they are not necessarily the same as
- * the names used in the OAuth2 specification.
+ * Emulates a resource owner (user) that "reads" the console (system out) and follows the
+ * instructions printed there.
  */
-public final class GrantCommonNames {
+public interface UserEmulator extends AutoCloseable {
 
-  private GrantCommonNames() {}
+  UserEmulator INACTIVE = new UserEmulator() {};
 
-  public static final String CLIENT_CREDENTIALS = GrantCanonicalNames.CLIENT_CREDENTIALS;
-  public static final String PASSWORD = GrantCanonicalNames.PASSWORD;
-  public static final String AUTHORIZATION_CODE = GrantCanonicalNames.AUTHORIZATION_CODE;
-  public static final String REFRESH_TOKEN = GrantCanonicalNames.REFRESH_TOKEN;
+  /** The {@link PrintStream} to use for console output. Defaults to {@link System#out}. */
+  default PrintStream console() {
+    return System.out;
+  }
 
-  public static final String TOKEN_EXCHANGE = "token_exchange";
+  /**
+   * Sets a callback to invoke when an error occurs. Allows signaling user emulator failures,
+   * including from running user flows, back to the thread running the test.
+   */
+  default void addErrorListener(Consumer<Throwable> callback) {}
+
+  @Override
+  default void close() {
+    // do nothing
+  }
 }

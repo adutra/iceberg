@@ -49,4 +49,10 @@ public abstract class MetadataDiscoveryResponse implements RESTResponse {
    * components.
    */
   public abstract URI tokenEndpoint();
+
+  /**
+   * URL of the OP's OAuth 2.0 Authorization Endpoint. This URL MUST use the https scheme and MAY
+   * contain port, path, and query parameter components.
+   */
+  public abstract URI authorizationEndpoint();
 }
