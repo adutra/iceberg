@@ -33,7 +33,11 @@ public final class PropertiesSanitizer {
   public static final Set<String> CONTEXT_DENY_LIST = Set.of();
 
   public static final Set<String> TABLE_DENY_LIST =
-      Set.of(OAuth2Properties.Basic.CLIENT_ID, OAuth2Properties.Basic.CLIENT_SECRET);
+      Set.of(
+          OAuth2Properties.Basic.CLIENT_ID,
+          OAuth2Properties.Basic.CLIENT_SECRET,
+          OAuth2Properties.ResourceOwnerPassword.USERNAME,
+          OAuth2Properties.ResourceOwnerPassword.PASSWORD);
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PropertiesSanitizer.class);
 

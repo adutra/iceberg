@@ -69,6 +69,7 @@ public final class OAuth2Properties {
      *
      * <ul>
      *   <li>{@value GrantCommonNames#CLIENT_CREDENTIALS}
+     *   <li>{@value GrantCommonNames#PASSWORD}
      *   <li>{@value GrantCommonNames#AUTHORIZATION_CODE}
      *   <li>{@value GrantCommonNames#DEVICE_CODE}
      *   <li>{@value GrantCommonNames#TOKEN_EXCHANGE}
@@ -183,6 +184,33 @@ public final class OAuth2Properties {
      * href="https://en.wikipedia.org/wiki/ISO_8601#Durations">ISO-8601 duration</a>.
      */
     public static final String IDLE_TIMEOUT = TokenRefresh.PREFIX + "idle-timeout";
+  }
+
+  /**
+   * Configuration properties for the <a
+   * href="https://datatracker.ietf.org/doc/html/rfc6749#section-4.3">Resource Owner Password
+   * Credentials Grant</a> flow.
+   *
+   * <p>Note: according to the <a
+   * href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-2.4">OAuth
+   * 2.0 Security Best Current Practice, section 2.4</a> this flow should NOT be used anymore
+   * because it "insecurely exposes the credentials of the resource owner to the client".
+   */
+  public static final class ResourceOwnerPassword {
+
+    public static final String PREFIX = OAuth2Properties.PREFIX + "resource-owner.";
+
+    /**
+     * Username to use when authenticating against the OAuth2 server. Required if using OAuth2
+     * authentication and {@value GrantCommonNames#PASSWORD} grant type, ignored otherwise.
+     */
+    public static final String USERNAME = ResourceOwnerPassword.PREFIX + "username";
+
+    /**
+     * Password to use when authenticating against the OAuth2 server. Required if using OAuth2
+     * authentication and the {@value GrantCommonNames#PASSWORD} grant type, ignored otherwise.
+     */
+    public static final String PASSWORD = ResourceOwnerPassword.PREFIX + "password";
   }
 
   /**

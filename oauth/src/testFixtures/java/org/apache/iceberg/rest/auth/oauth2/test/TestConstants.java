@@ -40,6 +40,9 @@ public final class TestConstants {
   public static final String CLIENT_SECRET1 = "s3cr3t";
   public static final String CLIENT_SECRET2 = "sEcrEt";
 
+  public static final String USERNAME = "Alice";
+  public static final String PASSWORD = "s3cr3t";
+
   public static final String SCOPE1 = "catalog";
   public static final String SCOPE2 = "session";
   public static final String SCOPE3 = "table";

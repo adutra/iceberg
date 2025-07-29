@@ -23,10 +23,10 @@ import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties;
-import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.DeviceCode;
 import org.apache.iceberg.rest.auth.oauth2.config.AuthorizationCodeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.DeviceCodeConfig;
+import org.apache.iceberg.rest.auth.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.TokenExchangeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.TokenRefreshConfig;
@@ -44,6 +44,12 @@ public interface OAuth2AgentSpec {
    * Required.
    */
   BasicConfig basicConfig();
+
+  /** The resource owner configuration. Required for the {@link GrantType#PASSWORD} grant type. */
+  @Value.Default
+  default ResourceOwnerPasswordConfig resourceOwnerPasswordConfig() {
+    return ResourceOwnerPasswordConfig.DEFAULT;
+  }
 
   /**
    * The authorization code configuration. Required for the {@link GrantType#AUTHORIZATION_CODE}
@@ -83,6 +89,20 @@ public interface OAuth2AgentSpec {
     ConfigValidator validator = new ConfigValidator();
     // We only need to validate constraints that span multiple configuration options here;
     // individual configuration options are validated in their respective classes.
+    if (basicConfig().grantType() == GrantType.PASSWORD) {
+      validator.check(
+          resourceOwnerPasswordConfig().username().isPresent()
+              && !resourceOwnerPasswordConfig().username().get().isEmpty(),
+          OAuth2Properties.ResourceOwnerPassword.USERNAME,
+          "username must be set if grant type is '%s'",
+          GrantType.PASSWORD.commonName());
+      validator.check(
+          resourceOwnerPasswordConfig().password().isPresent(),
+          OAuth2Properties.ResourceOwnerPassword.PASSWORD,
+          "password must be set if grant type is '%s'",
+          GrantType.PASSWORD.commonName());
+    }
+
     if (basicConfig().grantType() == GrantType.AUTHORIZATION_CODE) {
       validator.check(
           basicConfig().issuerUrl().isPresent()
@@ -96,7 +116,7 @@ public interface OAuth2AgentSpec {
       validator.check(
           basicConfig().issuerUrl().isPresent()
               || deviceCodeConfig().deviceAuthorizationEndpoint().isPresent(),
-          List.of(OAuth2Properties.Basic.ISSUER_URL, DeviceCode.ENDPOINT),
+          List.of(OAuth2Properties.Basic.ISSUER_URL, OAuth2Properties.DeviceCode.ENDPOINT),
           "either issuer URL or device authorization endpoint must be set if grant type is '%s'",
           GrantType.DEVICE_CODE.commonName());
     }
@@ -109,6 +129,7 @@ public interface OAuth2AgentSpec {
     Preconditions.checkNotNull(properties, "Invalid properties map: null");
     return builder()
         .basicConfig(basicConfig().merge(properties))
+        .resourceOwnerPasswordConfig(resourceOwnerPasswordConfig().merge(properties))
         .authorizationCodeConfig(authorizationCodeConfig().merge(properties))
         .deviceCodeConfig(deviceCodeConfig().merge(properties))
         .tokenRefreshConfig(tokenRefreshConfig().merge(properties))
@@ -138,6 +159,8 @@ public interface OAuth2AgentSpec {
     default Builder from(Map<String, String> properties) {
       Preconditions.checkNotNull(properties, "Invalid properties map: null");
       return basicConfig(BasicConfig.builder().from(properties).build())
+          .resourceOwnerPasswordConfig(
+              ResourceOwnerPasswordConfig.builder().from(properties).build())
           .authorizationCodeConfig(AuthorizationCodeConfig.builder().from(properties).build())
           .deviceCodeConfig(DeviceCodeConfig.builder().from(properties).build())
           .tokenRefreshConfig(TokenRefreshConfig.builder().from(properties).build())
@@ -147,6 +170,9 @@ public interface OAuth2AgentSpec {
 
     @CanIgnoreReturnValue
     Builder basicConfig(BasicConfig basicConfig);
+
+    @CanIgnoreReturnValue
+    Builder resourceOwnerPasswordConfig(ResourceOwnerPasswordConfig resourceOwnerPasswordConfig);
 
     @CanIgnoreReturnValue
     Builder authorizationCodeConfig(AuthorizationCodeConfig authorizationCodeConfig);

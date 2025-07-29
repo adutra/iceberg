@@ -51,6 +51,10 @@ class TestTokenExchangeFlow {
   @ParameterizedTest
   @CsvSource({
     "true,  false, CLIENT_CREDENTIALS , CLIENT_CREDENTIALS",
+    "true,  true,  PASSWORD           , PASSWORD",
+    "true,  false, PASSWORD           , PASSWORD",
+    "false, true,  PASSWORD           , PASSWORD",
+    "false, false, PASSWORD           , PASSWORD",
     "true,  true,  AUTHORIZATION_CODE , DEVICE_CODE",
     "true,  false, AUTHORIZATION_CODE , DEVICE_CODE",
     "false, true,  AUTHORIZATION_CODE , DEVICE_CODE",

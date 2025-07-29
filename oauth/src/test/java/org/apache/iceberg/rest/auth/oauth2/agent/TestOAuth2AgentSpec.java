@@ -18,6 +18,7 @@
  */
 package org.apache.iceberg.rest.auth.oauth2.agent;
 
+import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
@@ -25,6 +26,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.auth.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.validator.ConfigValidator;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -43,6 +45,45 @@ class TestOAuth2AgentSpec {
 
   static Stream<Arguments> testValidate() {
     return Stream.of(
+        Arguments.of(
+            OAuth2AgentSpec.builder()
+                .basicConfig(
+                    BasicConfig.builder()
+                        .grantType(GrantType.PASSWORD)
+                        .tokenEndpoint(URI.create("https://issuer.com/token"))
+                        .clientId("Client1")
+                        .clientSecret("s3cr3t")
+                        .build()),
+            asList(
+                "username must be set if grant type is 'password' (rest.auth.oauth2.resource-owner.username)",
+                "password must be set if grant type is 'password' (rest.auth.oauth2.resource-owner.password)")),
+        Arguments.of(
+            OAuth2AgentSpec.builder()
+                .basicConfig(
+                    BasicConfig.builder()
+                        .grantType(GrantType.PASSWORD)
+                        .tokenEndpoint(URI.create("https://issuer.com/token"))
+                        .clientId("Client1")
+                        .clientSecret("s3cr3t")
+                        .build())
+                .resourceOwnerPasswordConfig(
+                    ResourceOwnerPasswordConfig.builder().username("").build()),
+            asList(
+                "username must be set if grant type is 'password' (rest.auth.oauth2.resource-owner.username)",
+                "password must be set if grant type is 'password' (rest.auth.oauth2.resource-owner.password)")),
+        Arguments.of(
+            OAuth2AgentSpec.builder()
+                .basicConfig(
+                    BasicConfig.builder()
+                        .grantType(GrantType.PASSWORD)
+                        .tokenEndpoint(URI.create("https://issuer.com/token"))
+                        .clientId("Client1")
+                        .clientSecret("s3cr3t")
+                        .build())
+                .resourceOwnerPasswordConfig(
+                    ResourceOwnerPasswordConfig.builder().username("Alice").build()),
+            singletonList(
+                "password must be set if grant type is 'password' (rest.auth.oauth2.resource-owner.password)")),
         Arguments.of(
             OAuth2AgentSpec.builder()
                 .basicConfig(

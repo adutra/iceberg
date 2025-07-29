@@ -18,31 +18,22 @@
  */
 package org.apache.iceberg.rest.auth.oauth2.flow;
 
-import static org.apache.iceberg.rest.auth.oauth2.test.TestConstants.ACCESS_TOKEN_EXPIRATION_TIME;
-import static org.apache.iceberg.rest.auth.oauth2.test.TestConstants.REFRESH_TOKEN_EXPIRATION_TIME;
 import static org.apache.iceberg.rest.auth.oauth2.test.TokenAssertions.assertTokens;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.concurrent.ExecutionException;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.auth.oauth2.test.TestEnvironment;
-import org.apache.iceberg.rest.auth.oauth2.token.AccessToken;
-import org.apache.iceberg.rest.auth.oauth2.token.RefreshToken;
 import org.apache.iceberg.rest.auth.oauth2.token.Tokens;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-class TestRefreshTokenFlow {
-
-  private final Tokens currentTokens =
-      Tokens.of(
-          AccessToken.of("access_initial", "Bearer", ACCESS_TOKEN_EXPIRATION_TIME),
-          RefreshToken.of("refresh_initial", REFRESH_TOKEN_EXPIRATION_TIME));
+class TestResourceOwnerPasswordFlow {
 
   @ParameterizedTest
   @CsvSource({"true, true", "true, false", "false, true", "false, false"})
   void fetchNewTokens(boolean privateClient, boolean returnRefreshTokens)
-      throws ExecutionException, InterruptedException {
+      throws InterruptedException, ExecutionException {
     try (TestEnvironment env =
             TestEnvironment.builder()
                 .grantType(GrantType.PASSWORD)
@@ -50,15 +41,10 @@ class TestRefreshTokenFlow {
                 .returnRefreshTokens(returnRefreshTokens)
                 .build();
         FlowFactory flowFactory = env.createFlowFactory()) {
-      RefreshFlow flow = flowFactory.createTokenRefreshFlow();
-      assertThat(flow).isInstanceOf(RefreshTokenFlow.class);
-      Tokens tokens = flow.refreshTokens(currentTokens).toCompletableFuture().get();
-      assertTokens(
-          tokens,
-          "access_refreshed",
-          // If refresh tokens are not returned, the refresh token
-          // should be the same as the initial one
-          returnRefreshTokens ? "refresh_refreshed" : "refresh_initial");
+      InitialFlow flow = flowFactory.createInitialFlow();
+      assertThat(flow).isInstanceOf(ResourceOwnerPasswordFlow.class);
+      Tokens tokens = flow.fetchNewTokens().toCompletableFuture().get();
+      assertTokens(tokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
     }
   }
 }

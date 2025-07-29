@@ -65,6 +65,8 @@ class TestGrantType {
         // Test canonical names
         Arguments.of("client_credentials", GrantType.CLIENT_CREDENTIALS),
         Arguments.of("CLIENT_CREDENTIALS", GrantType.CLIENT_CREDENTIALS),
+        Arguments.of("password", GrantType.PASSWORD),
+        Arguments.of("PASSWORD", GrantType.PASSWORD),
         Arguments.of("refresh_token", GrantType.REFRESH_TOKEN),
         Arguments.of("authorization_code", GrantType.AUTHORIZATION_CODE),
         Arguments.of("AUTHORIZATION_CODE", GrantType.AUTHORIZATION_CODE),
@@ -80,6 +82,7 @@ class TestGrantType {
   static Stream<Arguments> initialTestCases() {
     return Stream.of(
         Arguments.of(GrantType.CLIENT_CREDENTIALS, true),
+        Arguments.of(GrantType.PASSWORD, true),
         Arguments.of(GrantType.AUTHORIZATION_CODE, true),
         Arguments.of(GrantType.DEVICE_CODE, true),
         Arguments.of(GrantType.REFRESH_TOKEN, false),

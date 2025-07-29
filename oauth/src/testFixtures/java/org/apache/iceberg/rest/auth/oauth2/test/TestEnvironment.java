@@ -50,6 +50,7 @@ import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.ConfigUtils;
 import org.apache.iceberg.rest.auth.oauth2.config.DeviceCodeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.PkceTransformation;
+import org.apache.iceberg.rest.auth.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.TokenExchangeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.TokenRefreshConfig;
@@ -66,6 +67,7 @@ import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableDeviceCodeE
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableErrorExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableLoadTableEndpointExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableMetadataDiscoveryExpectation;
+import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutablePasswordExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableRefreshTokenExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableTokenExchangeExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.server.HttpServer;
@@ -264,6 +266,7 @@ public abstract class TestEnvironment implements AutoCloseable {
   public OAuth2AgentSpec agentSpec() {
     return OAuth2AgentSpec.builder()
         .basicConfig(basicConfig())
+        .resourceOwnerPasswordConfig(resourceOwnerConfig())
         .authorizationCodeConfig(authorizationCodeConfig())
         .deviceCodeConfig(deviceCodeConfig())
         .tokenRefreshConfig(tokenRefreshConfig())
@@ -342,6 +345,19 @@ public abstract class TestEnvironment implements AutoCloseable {
   @Value.Default
   public Duration refreshTokenLifespan() {
     return TestConstants.REFRESH_TOKEN_LIFESPAN;
+  }
+
+  @Value.Default
+  public ResourceOwnerPasswordConfig resourceOwnerConfig() {
+    return ResourceOwnerPasswordConfig.builder()
+        .username(TestConstants.USERNAME)
+        .password(password())
+        .build();
+  }
+
+  @Value.Default
+  public String password() {
+    return TestConstants.PASSWORD;
   }
 
   @Value.Default
@@ -642,6 +658,7 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   public void createExpectations() {
     ImmutableClientCredentialsExpectation.of(this).create();
+    ImmutablePasswordExpectation.of(this).create();
     ImmutableAuthorizationCodeExpectation.of(this).create();
     ImmutableDeviceCodeExpectation.of(this).create();
     ImmutableTokenExchangeExpectation.of(this).create();

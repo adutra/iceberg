@@ -87,6 +87,40 @@ class TestOAuth2Agent {
 
   @ParameterizedTest
   @CsvSource({"true, true", "true, false", "false, true", "false, false"})
+  void testPassword(boolean privateClient, boolean returnRefreshTokens) {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.PASSWORD)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens currentTokens = agent.authenticateInternal();
+      assertTokens(currentTokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
+    }
+  }
+
+  @Test
+  void testPasswordUnauthorized() {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.PASSWORD)
+                .password("WrongPassword")
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      soft.assertThatThrownBy(agent::authenticate)
+          .asInstanceOf(throwable(OAuth2Exception.class))
+          .extracting(OAuth2Exception::errorResponse)
+          .satisfies(
+              r -> {
+                soft.assertThat(r.type()).isEqualTo("invalid_request");
+                soft.assertThat(r.message()).contains("Invalid request");
+              });
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
   void testAuthorizationCode(boolean privateClient, boolean returnRefreshTokens) {
     try (TestEnvironment env =
             TestEnvironment.builder()
@@ -197,6 +231,10 @@ class TestOAuth2Agent {
   @CsvSource({
     "true,  false, CLIENT_CREDENTIALS",
     "true,  true,  CLIENT_CREDENTIALS",
+    "true,  true,  PASSWORD",
+    "true,  false, PASSWORD",
+    "false, true,  PASSWORD",
+    "false, false, PASSWORD",
     "true,  true,  AUTHORIZATION_CODE",
     "true,  false, AUTHORIZATION_CODE",
     "false, true,  AUTHORIZATION_CODE",
@@ -231,6 +269,10 @@ class TestOAuth2Agent {
   @CsvSource({
     "true,  false, CLIENT_CREDENTIALS",
     "true,  true,  CLIENT_CREDENTIALS",
+    "true,  true,  PASSWORD",
+    "true,  false, PASSWORD",
+    "false, true,  PASSWORD",
+    "false, false, PASSWORD",
     "true,  true,  AUTHORIZATION_CODE",
     "true,  false, AUTHORIZATION_CODE",
     "false, true,  AUTHORIZATION_CODE",
