@@ -60,12 +60,16 @@ class TestGrantType {
         Arguments.of("client_credentials", GrantType.CLIENT_CREDENTIALS),
         Arguments.of("CLIENT_CREDENTIALS", GrantType.CLIENT_CREDENTIALS),
         Arguments.of("refresh_token", GrantType.REFRESH_TOKEN),
-        Arguments.of("REFRESH_TOKEN", GrantType.REFRESH_TOKEN));
+        Arguments.of("REFRESH_TOKEN", GrantType.REFRESH_TOKEN),
+        Arguments.of("urn:ietf:params:oauth:grant-type:token-exchange", GrantType.TOKEN_EXCHANGE),
+        Arguments.of("token_exchange", GrantType.TOKEN_EXCHANGE),
+        Arguments.of("TOKEN_EXCHANGE", GrantType.TOKEN_EXCHANGE));
   }
 
   static Stream<Arguments> initialTestCases() {
     return Stream.of(
         Arguments.of(GrantType.CLIENT_CREDENTIALS, true),
-        Arguments.of(GrantType.REFRESH_TOKEN, false));
+        Arguments.of(GrantType.REFRESH_TOKEN, false),
+        Arguments.of(GrantType.TOKEN_EXCHANGE, true));
   }
 }

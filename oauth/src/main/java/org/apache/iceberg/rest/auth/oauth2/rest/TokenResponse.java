@@ -39,6 +39,7 @@ import org.immutables.value.Value.Redacted;
  * a {@link TokenResponse} to a {@link Tokens} pair using the {@link #asTokens(Clock)} method.
  *
  * @see DefaultTokenResponse
+ * @see TokenExchangeResponse
  */
 public interface TokenResponse extends RESTResponse {
 

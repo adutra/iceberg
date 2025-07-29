@@ -29,6 +29,8 @@ import org.immutables.value.Value.Redacted;
  * parameters.
  *
  * @see ClientCredentialsTokenRequest
+ * @see RefreshTokenRequest
+ * @see TokenExchangeRequest
  */
 public interface ClientRequest extends PostFormRequest {
 

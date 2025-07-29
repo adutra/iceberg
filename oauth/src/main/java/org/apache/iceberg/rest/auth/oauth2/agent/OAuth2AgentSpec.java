@@ -24,6 +24,7 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.RuntimeConfig;
+import org.apache.iceberg.rest.auth.oauth2.config.TokenExchangeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.TokenRefreshConfig;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
 import org.immutables.value.Value;
@@ -44,6 +45,12 @@ public interface OAuth2AgentSpec {
     return TokenRefreshConfig.DEFAULT;
   }
 
+  /** The token exchange configuration. Optional. */
+  @Value.Default
+  default TokenExchangeConfig tokenExchangeConfig() {
+    return TokenExchangeConfig.DEFAULT;
+  }
+
   /** The runtime configuration. Optional. */
   @Value.Default
   default RuntimeConfig runtimeConfig() {
@@ -56,6 +63,7 @@ public interface OAuth2AgentSpec {
     return builder()
         .basicConfig(basicConfig().merge(properties))
         .tokenRefreshConfig(tokenRefreshConfig().merge(properties))
+        .tokenExchangeConfig(tokenExchangeConfig().merge(properties))
         .runtimeConfig(runtimeConfig().merge(properties))
         .build();
   }
@@ -82,6 +90,7 @@ public interface OAuth2AgentSpec {
       Preconditions.checkNotNull(properties, "Invalid properties map: null");
       return basicConfig(BasicConfig.builder().from(properties).build())
           .tokenRefreshConfig(TokenRefreshConfig.builder().from(properties).build())
+          .tokenExchangeConfig(TokenExchangeConfig.builder().from(properties).build())
           .runtimeConfig(RuntimeConfig.builder().from(properties).build());
     }
 
@@ -90,6 +99,9 @@ public interface OAuth2AgentSpec {
 
     @CanIgnoreReturnValue
     Builder tokenRefreshConfig(TokenRefreshConfig tokenRefreshConfig);
+
+    @CanIgnoreReturnValue
+    Builder tokenExchangeConfig(TokenExchangeConfig tokenExchangeConfig);
 
     @CanIgnoreReturnValue
     Builder runtimeConfig(RuntimeConfig runtimeConfig);

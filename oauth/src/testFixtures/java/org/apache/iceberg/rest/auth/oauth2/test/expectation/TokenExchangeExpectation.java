@@ -19,33 +19,43 @@
 package org.apache.iceberg.rest.auth.oauth2.test.expectation;
 
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
-import org.apache.iceberg.rest.auth.oauth2.rest.ImmutableRefreshTokenRequest;
+import org.apache.iceberg.rest.auth.oauth2.rest.ImmutableTokenExchangeRequest;
+import org.apache.iceberg.rest.auth.oauth2.rest.ImmutableTokenExchangeResponse;
 import org.apache.iceberg.rest.auth.oauth2.rest.PostFormRequest;
+import org.apache.iceberg.rest.auth.oauth2.rest.TokenExchangeResponse;
+import org.apache.iceberg.rest.auth.oauth2.rest.TokenResponse;
 import org.apache.iceberg.rest.auth.oauth2.test.TestConstants;
+import org.apache.iceberg.rest.auth.oauth2.token.TypedToken;
 import org.immutables.value.Value;
 
 @Value.Immutable
 @OAuth2ImmutableStyle
 @SuppressWarnings("resource")
-public abstract class RefreshTokenExpectation extends AbstractTokenEndpointExpectation {
-
-  @Override
-  public void create() {
-    clientAndServer()
-        .when(tokenRequest())
-        .respond(tokenResponse("access_refreshed", "refresh_refreshed"));
-  }
+public abstract class TokenExchangeExpectation extends InitialTokenFetchExpectation {
 
   @Override
   protected PostFormRequest tokenRequestBody() {
-    return ImmutableRefreshTokenRequest.builder()
+    return ImmutableTokenExchangeRequest.builder()
         .clientId(
             testEnvironment().privateClient()
                 ? null
                 : String.format("(%s|%s)", TestConstants.CLIENT_ID1, TestConstants.CLIENT_ID2))
-        .refreshToken("refresh_.*")
+        .subjectToken(String.format("(%s|%s)", TestConstants.SUBJECT_TOKEN, "access_.*"))
+        .subjectTokenType(TestConstants.SUBJECT_TOKEN_TYPE)
+        .actorToken(String.format("(%s|%s)", TestConstants.ACTOR_TOKEN, "access_.*"))
+        .actorTokenType(TestConstants.ACTOR_TOKEN_TYPE)
+        .requestedTokenType(TestConstants.REQUESTED_TOKEN_TYPE)
+        .audience(TestConstants.AUDIENCE)
+        .resource(TestConstants.RESOURCE)
         .scope(String.format("(%s|%s)", TestConstants.SCOPE1, TestConstants.SCOPE2))
         .putExtraParameter("(extra1|extra2)", "(value1|value2)")
         .build();
+  }
+
+  @Override
+  protected TokenResponse tokenResponseBody(String accessToken, String refreshToken) {
+    TokenExchangeResponse.Builder builder =
+        ImmutableTokenExchangeResponse.builder().issuedTokenType(TypedToken.URN_ACCESS_TOKEN);
+    return buildTokenResponseBody(builder, accessToken, refreshToken).build();
   }
 }

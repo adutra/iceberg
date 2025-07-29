@@ -69,6 +69,7 @@ public final class OAuth2Properties {
      *
      * <ul>
      *   <li>{@value GrantCommonNames#CLIENT_CREDENTIALS}
+     *   <li>{@value GrantCommonNames#TOKEN_EXCHANGE}
      * </ul>
      *
      * Optional, defaults to {@value GrantCommonNames#CLIENT_CREDENTIALS}.
@@ -180,6 +181,127 @@ public final class OAuth2Properties {
      * href="https://en.wikipedia.org/wiki/ISO_8601#Durations">ISO-8601 duration</a>.
      */
     public static final String IDLE_TIMEOUT = TokenRefresh.PREFIX + "idle-timeout";
+  }
+
+  /**
+   * Configuration properties for the <a href="https://datatracker.ietf.org/doc/html/rfc8693">Token
+   * Exchange</a> flow.
+   *
+   * <p>This flow allows a client to exchange one token for another, typically to obtain a token
+   * that is more suitable for the target resource or service.
+   */
+  public static final class TokenExchange {
+
+    public static final String PREFIX = OAuth2Properties.PREFIX + "token-exchange.";
+
+    /**
+     * For token exchanges only. The subject token to exchange.
+     *
+     * <p>If this value is present, the subject token will be used as-is. If this value is not
+     * present, the subject token will be dynamically fetched using the configuration provided under
+     * the {@value #SUBJECT_CONFIG_PREFIX} prefix.
+     */
+    public static final String SUBJECT_TOKEN = TokenExchange.PREFIX + "subject-token";
+
+    /**
+     * For token exchanges only. The type of the subject token. Must be a valid URN. The default is
+     * {@code urn:ietf:params:oauth:token-type:access_token}.
+     */
+    public static final String SUBJECT_TOKEN_TYPE = TokenExchange.PREFIX + "subject-token-type";
+
+    /**
+     * For token exchanges only. The actor token to exchange.
+     *
+     * <p>If this value is present, the actor token will be used as-is. If this value is not
+     * present, the actor token will be dynamically fetched using the configuration provided under
+     * the {@value #ACTOR_CONFIG_PREFIX} prefix. If no configuration is provided, no actor token
+     * will be used.
+     */
+    public static final String ACTOR_TOKEN = TokenExchange.PREFIX + "actor-token";
+
+    /**
+     * For token exchanges only. The type of the actor token. Must be a valid URN. The default is
+     * {@code urn:ietf:params:oauth:token-type:access_token}.
+     *
+     * <p>If the agent is configured to dynamically fetch the actor token, this property is ignored
+     * since only access tokens can be dynamically fetched.
+     */
+    public static final String ACTOR_TOKEN_TYPE = TokenExchange.PREFIX + "actor-token-type";
+
+    /**
+     * For token exchanges only. The type of the requested security token. Must be a valid URN. The
+     * default is {@code urn:ietf:params:oauth:token-type:access_token}.
+     */
+    public static final String REQUESTED_TOKEN_TYPE = TokenExchange.PREFIX + "requested-token-type";
+
+    /**
+     * For token exchanges only. The configuration to use for fetching the subject token. Required
+     * if {@value #SUBJECT_TOKEN} is not set.
+     *
+     * <p>This is a prefix property; any property that can be set under the {@value
+     * OAuth2Properties#PREFIX} prefix can also be set under this prefix.
+     *
+     * <p>The effective subject token fetch configuration will be the result of merging the
+     * subject-specific configuration with the main configuration.
+     *
+     * <p>Example:
+     *
+     * <pre>{@code
+     * rest.auth.oauth2.grant-type=token_exchange
+     * rest.auth.oauth2.token-endpoint=https://main-token-endpoint.com/token
+     * rest.auth.oauth2.client-id=main-client-id
+     * rest.auth.oauth2.client-secret=main-client-secret
+     * rest.auth.oauth2.token-exchange.subject-token.grant-type=client_credentials
+     * rest.auth.oauth2.token-exchange.subject-token.client-id=subject-client-id
+     * rest.auth.oauth2.token-exchange.subject-token.client-secret=subject-client-secret
+     * }</pre>
+     *
+     * The above configuration will result in a token exchange where the subject token is obtained
+     * using the client credentials grant type, with specific client ID and secret, but sharing the
+     * token endpoint, client authentication method and other settings with the main agent.
+     */
+    public static final String SUBJECT_CONFIG_PREFIX = TokenExchange.PREFIX + "subject-token.";
+
+    /**
+     * For token exchanges only. The configuration to use for fetching the actor token. Optional;
+     * required only if {@value #ACTOR_TOKEN} is not set but an actor token is required.
+     *
+     * <p>This is a prefix property; any property that can be set under the {@value
+     * OAuth2Properties#PREFIX} prefix can also be set under this prefix.
+     *
+     * <p>The effective actor token fetch configuration will be the result of merging the
+     * actor-specific configuration with the main configuration.
+     *
+     * <p>Example:
+     *
+     * <pre>{@code
+     * rest.auth.oauth2.grant-type=token_exchange
+     * rest.auth.oauth2.token-endpoint=https://main-token-endpoint.com/token
+     * rest.auth.oauth2.client-id=main-client-id
+     * rest.auth.oauth2.client-secret=main-client-secret
+     * rest.auth.oauth2.token-exchange.actor-token.grant-type=client_credentials
+     * rest.auth.oauth2.token-exchange.actor-token.client-id=actor-client-id
+     * rest.auth.oauth2.token-exchange.actor-token.client-secret=actor-client-secret
+     * }</pre>
+     *
+     * The above configuration will result in a token exchange where the actor token is obtained
+     * using the client credentials grant type, with specific client ID and secret, but sharing the
+     * token endpoint, client authentication method and other settings with the main agent.
+     */
+    public static final String ACTOR_CONFIG_PREFIX = TokenExchange.PREFIX + "actor-token.";
+
+    /**
+     * For token exchanges only. A URI that indicates the target service or resource where the
+     * client intends to use the requested security token. Optional.
+     */
+    public static final String RESOURCE = TokenExchange.PREFIX + "resource";
+
+    /**
+     * For token exchanges only. The logical name of the target service where the client intends to
+     * use the requested security token. This serves a purpose similar to the resource parameter but
+     * with the client providing a logical name for the target service.
+     */
+    public static final String AUDIENCE = TokenExchange.PREFIX + "audience";
   }
 
   /**

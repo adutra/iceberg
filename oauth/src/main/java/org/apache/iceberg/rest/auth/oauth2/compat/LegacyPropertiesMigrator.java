@@ -117,6 +117,16 @@ public final class LegacyPropertiesMigrator {
           warnOnLegacyIcebergOAuth2Property(entry.getKey(), OAuth2Properties.Basic.SCOPE);
           migrated.put(OAuth2Properties.Basic.SCOPE, entry.getValue());
           break;
+        case org.apache.iceberg.rest.auth.OAuth2Properties.AUDIENCE:
+          warnOnLegacyIcebergOAuth2Property(
+              entry.getKey(), OAuth2Properties.TokenExchange.AUDIENCE);
+          migrated.put(OAuth2Properties.TokenExchange.AUDIENCE, entry.getValue());
+          break;
+        case org.apache.iceberg.rest.auth.OAuth2Properties.RESOURCE:
+          warnOnLegacyIcebergOAuth2Property(
+              entry.getKey(), OAuth2Properties.TokenExchange.RESOURCE);
+          migrated.put(OAuth2Properties.TokenExchange.RESOURCE, entry.getValue());
+          break;
         case org.apache.iceberg.rest.auth.OAuth2Properties.ACCESS_TOKEN_TYPE:
         case org.apache.iceberg.rest.auth.OAuth2Properties.ID_TOKEN_TYPE:
         case org.apache.iceberg.rest.auth.OAuth2Properties.SAML1_TOKEN_TYPE:

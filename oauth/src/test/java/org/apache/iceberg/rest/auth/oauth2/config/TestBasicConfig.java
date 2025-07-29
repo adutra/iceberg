@@ -19,6 +19,7 @@
 package org.apache.iceberg.rest.auth.oauth2.config;
 
 import static java.util.Collections.singletonList;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.CLIENT_AUTH;
 import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.CLIENT_ID;
 import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.CLIENT_SECRET;
 import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic.EXTRA_PARAMS_PREFIX;
@@ -120,7 +121,7 @@ class TestBasicConfig {
                 .tokenEndpoint(URI.create("https://example.com/token"))
                 .grantType(GrantType.REFRESH_TOKEN),
             singletonList(
-                "grant type must be one of: 'client_credentials' (rest.auth.oauth2.grant-type)")),
+                "grant type must be one of: 'client_credentials', 'token_exchange' (rest.auth.oauth2.grant-type)")),
         Arguments.of(
             BasicConfig.builder()
                 .clientId("Client1")
@@ -204,7 +205,7 @@ class TestBasicConfig {
   private static Arguments nonEmptyProperties() {
     BasicConfig base =
         BasicConfig.builder()
-            .grantType(GrantType.CLIENT_CREDENTIALS)
+            .grantType(GrantType.TOKEN_EXCHANGE)
             .clientId("Client1")
             .clientSecret("secret1")
             .issuerUrl(URI.create("https://example1.com"))
@@ -247,7 +248,7 @@ class TestBasicConfig {
   private static Arguments baseCleared() {
     BasicConfig base =
         BasicConfig.builder()
-            .grantType(GrantType.CLIENT_CREDENTIALS)
+            .grantType(GrantType.TOKEN_EXCHANGE)
             .clientId("Client1")
             .clientSecret("secret1")
             .issuerUrl(URI.create("https://example1.com"))
@@ -257,6 +258,10 @@ class TestBasicConfig {
             .build();
     Map<String, String> properties =
         Map.of(
+            CLIENT_AUTH,
+            "none",
+            CLIENT_SECRET,
+            "",
             ISSUER_URL,
             "",
             SCOPE,
@@ -267,9 +272,8 @@ class TestBasicConfig {
             "");
     BasicConfig expected =
         BasicConfig.builder()
-            .grantType(GrantType.CLIENT_CREDENTIALS)
+            .grantType(GrantType.TOKEN_EXCHANGE)
             .clientId("Client1")
-            .clientSecret("secret1")
             .tokenEndpoint(URI.create("https://example1.com/token"))
             .extraRequestParameters(Map.of("extra1", "value1"))
             .build();

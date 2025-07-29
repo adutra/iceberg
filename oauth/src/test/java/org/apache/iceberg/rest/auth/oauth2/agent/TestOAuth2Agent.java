@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2Agent.MustFetchNewTokensException;
 import org.apache.iceberg.rest.auth.oauth2.flow.OAuth2Exception;
+import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.auth.oauth2.test.TestClock;
 import org.apache.iceberg.rest.auth.oauth2.test.TestConstants;
 import org.apache.iceberg.rest.auth.oauth2.test.TestEnvironment;
@@ -51,7 +52,7 @@ import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith(SoftAssertionsExtension.class)
 class TestOAuth2Agent {
@@ -83,7 +84,97 @@ class TestOAuth2Agent {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
+  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
+  void testTokenExchangeStaticSubjectActor(boolean privateClient, boolean returnRefreshTokens) {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.TOKEN_EXCHANGE)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens currentTokens = agent.authenticateInternal();
+      assertTokens(currentTokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "true,  true,  CLIENT_CREDENTIALS",
+    "true,  false, CLIENT_CREDENTIALS",
+    "false, true,  CLIENT_CREDENTIALS",
+    "false, false, CLIENT_CREDENTIALS"
+  })
+  void testTokenExchangeDynamicSubject(
+      boolean privateClient, boolean returnRefreshTokens, GrantType grantType)
+      throws InterruptedException, ExecutionException {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.TOKEN_EXCHANGE)
+                .subjectToken(null)
+                .subjectGrantType(grantType)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens tokens = agent.authenticateInternal();
+      assertTokens(tokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
+      if (returnRefreshTokens) {
+        tokens = agent.refreshCurrentTokens(tokens).toCompletableFuture().get();
+        assertTokens(tokens, "access_refreshed", "refresh_refreshed");
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "true,  true,  CLIENT_CREDENTIALS",
+    "true,  false, CLIENT_CREDENTIALS",
+    "false, true,  CLIENT_CREDENTIALS",
+    "false, false, CLIENT_CREDENTIALS"
+  })
+  void testTokenExchangeDynamicActor(
+      boolean privateClient, boolean returnRefreshTokens, GrantType grantType)
+      throws InterruptedException, ExecutionException {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.TOKEN_EXCHANGE)
+                .actorToken(null)
+                .actorGrantType(grantType)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens tokens = agent.authenticateInternal();
+      assertTokens(tokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
+      if (returnRefreshTokens) {
+        tokens = agent.refreshCurrentTokens(tokens).toCompletableFuture().get();
+        assertTokens(tokens, "access_refreshed", "refresh_refreshed");
+      }
+    }
+  }
+
+  @Test
+  void testTokenExchangeUnauthorized() {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.TOKEN_EXCHANGE)
+                .subjectToken("WrongSubjectToken")
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      soft.assertThatThrownBy(agent::authenticate)
+          .asInstanceOf(throwable(OAuth2Exception.class))
+          .extracting(OAuth2Exception::errorResponse)
+          .satisfies(
+              r -> {
+                soft.assertThat(r.type()).isEqualTo("invalid_request");
+                soft.assertThat(r.message()).contains("Invalid request");
+              });
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
   void testRefreshToken(boolean returnRefreshTokens)
       throws InterruptedException, ExecutionException {
     try (TestEnvironment env =
@@ -128,7 +219,12 @@ class TestOAuth2Agent {
    */
   @Test
   void testCopyAfterSuccessfulAuth() throws InterruptedException, ExecutionException {
-    try (TestEnvironment env = TestEnvironment.builder().build();
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.TOKEN_EXCHANGE)
+                .subjectToken(null)
+                .actorToken(null)
+                .build();
         OAuth2Agent agent1 = env.createAgent()) {
       Tokens tokens = agent1.authenticateInternal();
       // 1) Test copy before close
@@ -176,7 +272,13 @@ class TestOAuth2Agent {
   @Test
   @SuppressWarnings("checkstyle:NestedTryDepth")
   void testCopyAfterFailedAuth() throws InterruptedException, ExecutionException {
-    try (TestEnvironment env = TestEnvironment.builder().createDefaultExpectations(false).build()) {
+    try (TestEnvironment env =
+        TestEnvironment.builder()
+            .grantType(GrantType.TOKEN_EXCHANGE)
+            .subjectToken(null)
+            .actorToken(null)
+            .createDefaultExpectations(false)
+            .build()) {
       // Emulate success fetching metadata, but failure on initial token fetch
       env.createMetadataDiscoveryExpectations();
       env.createErrorExpectations();

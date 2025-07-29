@@ -18,6 +18,7 @@
  */
 package org.apache.iceberg.rest.auth.oauth2.test;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -27,6 +28,7 @@ import java.util.UUID;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties;
+import org.apache.iceberg.rest.auth.oauth2.token.TypedToken;
 
 public final class TestConstants {
 
@@ -62,6 +64,15 @@ public final class TestConstants {
       NOW.plusSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS);
   public static final Duration REFRESH_TOKEN_LIFESPAN =
       Duration.ofSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS);
+
+  public static final String SUBJECT_TOKEN = "subject";
+  public static final String ACTOR_TOKEN = "actor";
+  public static final String AUDIENCE = "audience";
+
+  public static final URI SUBJECT_TOKEN_TYPE = TypedToken.URN_ACCESS_TOKEN;
+  public static final URI ACTOR_TOKEN_TYPE = TypedToken.URN_ACCESS_TOKEN;
+  public static final URI REQUESTED_TOKEN_TYPE = TypedToken.URN_ACCESS_TOKEN;
+  public static final URI RESOURCE = URI.create("urn:authmgr:test:resource");
 
   public static final String WAREHOUSE = "warehouse1";
   public static final TableIdentifier TABLE_IDENTIFIER = TableIdentifier.of("namespace1", "table1");

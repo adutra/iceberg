@@ -20,13 +20,18 @@ package org.apache.iceberg.rest.auth.oauth2.flow;
 
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
+import javax.annotation.Nullable;
+import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthenticator;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthenticatorFactory;
 import org.apache.iceberg.rest.auth.oauth2.endpoint.EndpointProvider;
 import org.apache.iceberg.rest.auth.oauth2.endpoint.EndpointProviderFactory;
+import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
+import org.apache.iceberg.rest.auth.oauth2.tokenexchange.ActorTokenSupplier;
+import org.apache.iceberg.rest.auth.oauth2.tokenexchange.SubjectTokenSupplier;
 import org.immutables.value.Value;
 
 @Value.Immutable
@@ -70,10 +75,27 @@ public abstract class FlowFactory implements AutoCloseable {
   }
 
   @Override
-  public void close() {}
+  @SuppressWarnings({"EmptyBlock", "EmptyTryBlock"})
+  public void close() {
+    if (spec().basicConfig().grantType() == GrantType.TOKEN_EXCHANGE) {
+      SubjectTokenSupplier subjectTokenSupplier = subjectTokenSupplier();
+      ActorTokenSupplier actorTokenSupplier = actorTokenSupplier();
+      try (subjectTokenSupplier;
+          actorTokenSupplier) {}
+    }
+  }
 
   public FlowFactory copy() {
-    return ImmutableFlowFactory.builder().from(this).build();
+    @SuppressWarnings("resource")
+    SubjectTokenSupplier subjectTokenSupplier = subjectTokenSupplier();
+    @SuppressWarnings("resource")
+    ActorTokenSupplier actorTokenSupplier = actorTokenSupplier();
+    return ImmutableFlowFactory.builder()
+        .from(this)
+        // Copy the token suppliers to also create copies of their internal agents.
+        .subjectTokenSupplier(subjectTokenSupplier == null ? null : subjectTokenSupplier.copy())
+        .actorTokenSupplier(actorTokenSupplier == null ? null : actorTokenSupplier.copy())
+        .build();
   }
 
   protected abstract OAuth2AgentSpec spec();
@@ -92,10 +114,35 @@ public abstract class FlowFactory implements AutoCloseable {
     return ClientAuthenticatorFactory.createAuthenticator(spec().basicConfig());
   }
 
+  @Value.Default
+  @Nullable
+  protected SubjectTokenSupplier subjectTokenSupplier() {
+    return spec().basicConfig().grantType() != GrantType.TOKEN_EXCHANGE
+        ? null
+        : SubjectTokenSupplier.of(spec(), executor(), restClientSupplier());
+  }
+
+  @Value.Default
+  @Nullable
+  protected ActorTokenSupplier actorTokenSupplier() {
+    return spec().basicConfig().grantType() != GrantType.TOKEN_EXCHANGE
+        ? null
+        : ActorTokenSupplier.of(spec(), executor(), restClientSupplier());
+  }
+
   private AbstractFlow.Builder<? extends InitialFlow, ?> newInitialFlowBuilder() {
     switch (spec().basicConfig().grantType()) {
       case CLIENT_CREDENTIALS:
         return ImmutableClientCredentialsFlow.builder();
+      case TOKEN_EXCHANGE:
+        SubjectTokenSupplier subjectTokenSupplier =
+            Preconditions.checkNotNull(
+                subjectTokenSupplier(), "Invalid subject token supplier: null");
+        ActorTokenSupplier actorTokenSupplier =
+            Preconditions.checkNotNull(actorTokenSupplier(), "Invalid actor token supplier: null");
+        return ImmutableTokenExchangeFlow.builder()
+            .subjectTokenStage(subjectTokenSupplier.supplyTokenAsync())
+            .actorTokenStage(actorTokenSupplier.supplyTokenAsync());
       default:
         throw new IllegalArgumentException(
             "Unknown or invalid grant type for initial token fetch: "

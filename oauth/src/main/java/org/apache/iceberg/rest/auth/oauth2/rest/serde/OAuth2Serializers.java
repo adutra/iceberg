@@ -32,6 +32,8 @@ import org.apache.iceberg.rest.auth.oauth2.rest.ClientCredentialsTokenRequest;
 import org.apache.iceberg.rest.auth.oauth2.rest.DefaultTokenResponse;
 import org.apache.iceberg.rest.auth.oauth2.rest.MetadataDiscoveryResponse;
 import org.apache.iceberg.rest.auth.oauth2.rest.RefreshTokenRequest;
+import org.apache.iceberg.rest.auth.oauth2.rest.TokenExchangeRequest;
+import org.apache.iceberg.rest.auth.oauth2.rest.TokenExchangeResponse;
 
 public final class OAuth2Serializers {
 
@@ -49,10 +51,16 @@ public final class OAuth2Serializers {
         // RefreshTokenRequest
         .addSerializer(RefreshTokenRequest.class, new RefreshTokenRequestSerializer())
         .addDeserializer(RefreshTokenRequest.class, new RefreshTokenRequestDeserializer())
+        // TokenExchangeRequest
+        .addSerializer(TokenExchangeRequest.class, new TokenExchangeRequestSerializer())
+        .addDeserializer(TokenExchangeRequest.class, new TokenExchangeRequestDeserializer())
         // Responses
         // DefaultTokenResponse
         .addSerializer(DefaultTokenResponse.class, new DefaultTokenResponseSerializer())
         .addDeserializer(DefaultTokenResponse.class, new DefaultTokenResponseDeserializer())
+        // TokenExchangeResponse
+        .addSerializer(TokenExchangeResponse.class, new TokenExchangeResponseSerializer())
+        .addDeserializer(TokenExchangeResponse.class, new TokenExchangeResponseDeserializer())
         // MetadataDiscoveryResponse
         .addSerializer(MetadataDiscoveryResponse.class, new MetadataDiscoveryResponseSerializer())
         .addDeserializer(
@@ -99,6 +107,24 @@ public final class OAuth2Serializers {
     }
   }
 
+  static class TokenExchangeRequestSerializer extends JsonSerializer<TokenExchangeRequest> {
+    @Override
+    public void serialize(
+        TokenExchangeRequest request, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      TokenExchangeRequestParser.toJson(request, gen);
+    }
+  }
+
+  static class TokenExchangeRequestDeserializer extends JsonDeserializer<TokenExchangeRequest> {
+    @Override
+    public TokenExchangeRequest deserialize(JsonParser p, DeserializationContext context)
+        throws IOException {
+      JsonNode jsonNode = p.getCodec().readTree(p);
+      return TokenExchangeRequestParser.fromJson(jsonNode);
+    }
+  }
+
   static class DefaultTokenResponseSerializer extends JsonSerializer<DefaultTokenResponse> {
     @Override
     public void serialize(
@@ -114,6 +140,24 @@ public final class OAuth2Serializers {
         throws IOException {
       JsonNode jsonNode = p.getCodec().readTree(p);
       return DefaultTokenResponseParser.fromJson(jsonNode);
+    }
+  }
+
+  static class TokenExchangeResponseSerializer extends JsonSerializer<TokenExchangeResponse> {
+    @Override
+    public void serialize(
+        TokenExchangeResponse request, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      TokenExchangeResponseParser.toJson(request, gen);
+    }
+  }
+
+  static class TokenExchangeResponseDeserializer extends JsonDeserializer<TokenExchangeResponse> {
+    @Override
+    public TokenExchangeResponse deserialize(JsonParser p, DeserializationContext context)
+        throws IOException {
+      JsonNode jsonNode = p.getCodec().readTree(p);
+      return TokenExchangeResponseParser.fromJson(jsonNode);
     }
   }
 

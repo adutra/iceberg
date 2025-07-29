@@ -21,6 +21,7 @@ package org.apache.iceberg.rest.auth.oauth2.flow;
 import java.util.concurrent.CompletionStage;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
+import org.apache.iceberg.rest.auth.oauth2.rest.DefaultTokenResponse;
 import org.apache.iceberg.rest.auth.oauth2.rest.RefreshTokenRequest;
 import org.apache.iceberg.rest.auth.oauth2.token.RefreshToken;
 import org.apache.iceberg.rest.auth.oauth2.token.Tokens;
@@ -43,7 +44,7 @@ abstract class RefreshTokenFlow extends AbstractFlow implements RefreshFlow {
     Preconditions.checkNotNull(refreshToken, "Invalid refreshToken: null");
     RefreshTokenRequest.Builder request =
         RefreshTokenRequest.builder().refreshToken(refreshToken.payload());
-    return invokeTokenEndpoint(request)
+    return invokeTokenEndpoint(request, DefaultTokenResponse.class)
         .thenApply(
             tokens -> {
               if (tokens.refreshToken() == null) {

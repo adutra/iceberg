@@ -19,6 +19,7 @@
 package org.apache.iceberg.rest.auth.oauth2.compat;
 
 import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.TokenExchange;
 import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.TokenRefresh;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
@@ -188,6 +189,38 @@ class TestLegacyPropertiesMigrator {
         .containsExactly(OAuth2Properties.SCOPE, Basic.SCOPE);
   }
 
+  @Test
+  void audience() {
+    Map<String, String> input = Map.of(OAuth2Properties.AUDIENCE, "https://api.example.com");
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+    assertThat(actual).isEqualTo(Map.of(TokenExchange.AUDIENCE, "https://api.example.com"));
+    assertThat(messages).hasSize(1);
+    Pair<String, String[]> message = messages.get(0);
+    assertThat(message)
+        .extracting(Pair::first)
+        .isEqualTo("Detected legacy property '{}', please use option {} instead.");
+    assertThat(message)
+        .extracting(Pair::second)
+        .asInstanceOf(array(String[].class))
+        .containsExactly(OAuth2Properties.AUDIENCE, TokenExchange.AUDIENCE);
+  }
+
+  @Test
+  void resource() {
+    Map<String, String> input = Map.of(OAuth2Properties.RESOURCE, "urn:example:resource");
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+    assertThat(actual).isEqualTo(Map.of(TokenExchange.RESOURCE, "urn:example:resource"));
+    assertThat(messages).hasSize(1);
+    Pair<String, String[]> message = messages.get(0);
+    assertThat(message)
+        .extracting(Pair::first)
+        .isEqualTo("Detected legacy property '{}', please use option {} instead.");
+    assertThat(message)
+        .extracting(Pair::second)
+        .asInstanceOf(array(String[].class))
+        .containsExactly(OAuth2Properties.RESOURCE, TokenExchange.RESOURCE);
+  }
+
   @ParameterizedTest
   @MethodSource
   void ignoredTokenType(String tokenTypeProperty) {
@@ -221,6 +254,8 @@ class TestLegacyPropertiesMigrator {
             .put(OAuth2Properties.TOKEN_REFRESH_ENABLED, "true")
             .put(OAuth2Properties.OAUTH2_SERVER_URI, "https://example.com/token")
             .put(OAuth2Properties.SCOPE, "read write")
+            .put(OAuth2Properties.AUDIENCE, "https://api.example.com")
+            .put(OAuth2Properties.RESOURCE, "urn:example:resource")
             .put(OAuth2Properties.ACCESS_TOKEN_TYPE, "ignored")
             .put(Basic.ISSUER_URL, "https://example.com") // New property should be preserved
             .put("non.oauth2.property", "ignored") // Non-OAuth2 property should be filtered out
@@ -236,13 +271,15 @@ class TestLegacyPropertiesMigrator {
             .put(TokenRefresh.ENABLED, "true")
             .put(Basic.TOKEN_ENDPOINT, "https://example.com/token")
             .put(Basic.SCOPE, "read write")
+            .put(TokenExchange.AUDIENCE, "https://api.example.com")
+            .put(TokenExchange.RESOURCE, "urn:example:resource")
             .put(Basic.ISSUER_URL, "https://example.com")
             .build();
 
     assertThat(actual).containsExactlyInAnyOrderEntriesOf(expected);
 
-    // Should have 6 log entries: 5 migration warnings + 1 ignored property warning
-    assertThat(messages).hasSize(6);
+    // Should have 8 log entries: 7 migration warnings + 1 ignored property warning
+    assertThat(messages).hasSize(8);
 
     List<String> legacyProperties =
         messages.stream()
@@ -258,7 +295,9 @@ class TestLegacyPropertiesMigrator {
             OAuth2Properties.TOKEN_EXPIRES_IN_MS,
             OAuth2Properties.TOKEN_REFRESH_ENABLED,
             OAuth2Properties.OAUTH2_SERVER_URI,
-            OAuth2Properties.SCOPE);
+            OAuth2Properties.SCOPE,
+            OAuth2Properties.AUDIENCE,
+            OAuth2Properties.RESOURCE);
 
     List<String> ignoredProperties =
         messages.stream()
@@ -280,11 +319,13 @@ class TestLegacyPropertiesMigrator {
             .put(OAuth2Properties.TOKEN_REFRESH_ENABLED, "true")
             .put(OAuth2Properties.OAUTH2_SERVER_URI, "https://example.com/token")
             .put(OAuth2Properties.SCOPE, "read write")
+            .put(OAuth2Properties.AUDIENCE, "https://api.example.com")
+            .put(OAuth2Properties.RESOURCE, "urn:example:resource")
             .put(OAuth2Properties.ACCESS_TOKEN_TYPE, "ignored")
             .build();
     LegacyPropertiesMigrator migrator = new LegacyPropertiesMigrator(consumer);
     migrator.migrate(input);
     migrator.migrate(input);
-    assertThat(messages).hasSize(6);
+    assertThat(messages).hasSize(8);
   }
 }
