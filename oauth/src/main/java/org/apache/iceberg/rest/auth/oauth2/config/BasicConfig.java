@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
+import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.auth.oauth2.config.option.ConfigOption;
@@ -34,7 +35,9 @@ import org.apache.iceberg.rest.auth.oauth2.config.option.ConfigOptions;
 import org.apache.iceberg.rest.auth.oauth2.config.validator.ConfigValidator;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
+import org.apache.iceberg.rest.auth.oauth2.token.AccessToken;
 import org.immutables.value.Value;
+import org.slf4j.LoggerFactory;
 
 @Value.Immutable
 @OAuth2ImmutableStyle
@@ -42,6 +45,22 @@ public interface BasicConfig {
 
   Duration DEFAULT_TIMEOUT = Duration.ofMinutes(5);
   Duration MIN_TIMEOUT = Duration.ofSeconds(30);
+
+  /**
+   * The initial access token to use. Optional. If this is set, the agent will not attempt to fetch
+   * the first new token from the Authorization server, but will use this token instead.
+   *
+   * <p>This option is mostly useful when migrating from the Iceberg Core OAuth2 manager to this
+   * OAuth2 manager. Always prefer letting the agent fetch an initial token from the configured
+   * Authorization server.
+   *
+   * <p>When this option is set, the token is not validated by the agent, and it's not always
+   * possible to refresh it. It's recommended to use this option only for testing purposes, or if
+   * you know that the token is valid and will not expire too soon.
+   *
+   * @see OAuth2Properties.Basic#TOKEN
+   */
+  Optional<AccessToken> token();
 
   /**
    * The root URL of the Authorization server, which will be used for discovering supported
@@ -83,7 +102,7 @@ public interface BasicConfig {
   }
 
   /**
-   * The OAuth2 client ID. Must be set.
+   * The OAuth2 client ID. Must be set, unless {@link #dialect()} is {@link Dialect#ICEBERG_REST}.
    *
    * @see OAuth2Properties.Basic#CLIENT_ID
    */
@@ -93,6 +112,9 @@ public interface BasicConfig {
    * The OAuth2 client authentication method. Defaults to {@link
    * ClientAuthentication#CLIENT_SECRET_BASIC} if the client is private, or {@link
    * ClientAuthentication#NONE} if the client is public.
+   *
+   * <p>Ignored when dialect is {@link Dialect#ICEBERG_REST} or when a {@linkplain #token() token}
+   * is provided.
    *
    * @see OAuth2Properties.Basic#CLIENT_AUTH
    */
@@ -125,6 +147,47 @@ public interface BasicConfig {
    * @see OAuth2Properties.Basic#EXTRA_PARAMS_PREFIX
    */
   Map<String, String> extraRequestParameters();
+
+  /**
+   * The OAuth2 dialect. Possible values are: {@link Dialect#STANDARD} and {@link
+   * Dialect#ICEBERG_REST}.
+   *
+   * <p>If the Iceberg dialect is selected, the agent will behave exactly like the built-in OAuth2
+   * manager from Iceberg Core. This dialect should only be selected if the token endpoint is
+   * internal to the REST catalog server, and the server is configured to understand this dialect.
+   *
+   * <p>The Iceberg dialect's main differences from standard OAuth2 are:
+   *
+   * <ul>
+   *   <li>Only {@link GrantType#CLIENT_CREDENTIALS} grant type is supported;
+   *   <li>Token refreshes are done with the {@link GrantType#TOKEN_EXCHANGE} grant type;
+   *   <li>Token refreshes are done with Bearer authentication, not Basic authentication;
+   *   <li>Public clients are not supported, however client secrets without client IDs are
+   *       supported;
+   *   <li>Client ID and client secret are sent as request body parameters, and not as Basic
+   *       authentication.
+   * </ul>
+   *
+   * Optional. The default value tries to guess the dialect based on the current configuration.
+   *
+   * @see OAuth2Properties.Basic#DIALECT
+   */
+  @Value.Default
+  default Dialect dialect() {
+    if (token().isPresent()) {
+      return Dialect.ICEBERG_REST;
+    }
+
+    if (clientSecret().isPresent() && clientId().isEmpty()) {
+      // Only Iceberg dialect supports this configuration
+      return Dialect.ICEBERG_REST;
+    }
+
+    return tokenEndpoint()
+        .filter(uri -> !uri.isAbsolute())
+        .map(uri -> Dialect.ICEBERG_REST)
+        .orElse(Dialect.STANDARD);
+  }
 
   /**
    * Defines how long the agent should wait for tokens to be acquired. Defaults to {@link
@@ -161,13 +224,31 @@ public interface BasicConfig {
 
   private BasicConfig validateEndpoints(ConfigValidator validator) {
     BasicConfig basicConfig = this;
-    validator.check(
-        issuerUrl().isPresent() || tokenEndpoint().isPresent(),
-        List.of(OAuth2Properties.Basic.ISSUER_URL, OAuth2Properties.Basic.TOKEN_ENDPOINT),
-        "either issuer URL or token endpoint must be set");
+    if (dialect() == Dialect.STANDARD) {
+      validator.check(
+          issuerUrl().isPresent() || tokenEndpoint().isPresent(),
+          List.of(OAuth2Properties.Basic.ISSUER_URL, OAuth2Properties.Basic.TOKEN_ENDPOINT),
+          "either issuer URL or token endpoint must be set");
+    } else if (issuerUrl().isEmpty() && tokenEndpoint().isEmpty()) {
+      LoggerFactory.getLogger(BasicConfig.class)
+          .warn(
+              "The selected dialect is {} and the configuration does not specify a token endpoint nor an issuer URL: "
+                  + "inferring that the token endpoint is internal to the REST catalog server. "
+                  + "This automatic inference will be removed in a future release. "
+                  + "Please define one of the following properties: '{}' or '{}'.",
+              Dialect.ICEBERG_REST,
+              OAuth2Properties.Basic.ISSUER_URL,
+              OAuth2Properties.Basic.TOKEN_ENDPOINT);
+      basicConfig =
+          BasicConfig.builder()
+              .from(basicConfig)
+              .tokenEndpoint(URI.create(ResourcePaths.tokens()))
+              .build();
+    }
+
     if (issuerUrl().isPresent()) {
       validator.checkEndpoint(
-          issuerUrl().get(), OAuth2Properties.Basic.ISSUER_URL, "Issuer URL %s");
+          issuerUrl().get(), true, OAuth2Properties.Basic.ISSUER_URL, "Issuer URL %s");
     }
 
     if (tokenEndpoint().isPresent()) {
@@ -175,7 +256,7 @@ public interface BasicConfig {
       // it is relative to the HTTP client's base URI and points to the REST catalog
       // server's internal token endpoint.
       validator.checkEndpoint(
-          tokenEndpoint().get(), OAuth2Properties.Basic.TOKEN_ENDPOINT, "Token endpoint %s");
+          tokenEndpoint().get(), false, OAuth2Properties.Basic.TOKEN_ENDPOINT, "Token endpoint %s");
     }
 
     return basicConfig;
@@ -191,9 +272,30 @@ public interface BasicConfig {
             .map(GrantType::name)
             .map(String::toLowerCase)
             .collect(Collectors.joining("', '", "'", "'")));
+    if (dialect() == Dialect.ICEBERG_REST) {
+      validator.check(
+          grantType() == GrantType.CLIENT_CREDENTIALS,
+          List.of(OAuth2Properties.Basic.GRANT_TYPE, OAuth2Properties.Basic.DIALECT),
+          "Iceberg OAuth2 dialect only supports the '%s' grant type",
+          GrantType.CLIENT_CREDENTIALS.commonName());
+    }
   }
 
   private void validateClientCredentials(ConfigValidator validator) {
+    // Only validate client ID and client secret if a token is not provided
+    if (token().isEmpty()) {
+      if (dialect() == Dialect.ICEBERG_REST) {
+        validator.check(
+            clientSecret().isPresent(),
+            List.of(OAuth2Properties.Basic.CLIENT_SECRET, OAuth2Properties.Basic.DIALECT),
+            "client secret must not be empty when Iceberg OAuth2 dialect is used");
+      } else {
+        validateStandardDialectCredentials(validator);
+      }
+    }
+  }
+
+  private void validateStandardDialectCredentials(ConfigValidator validator) {
     validator.check(
         clientId().isPresent() && !clientId().get().isEmpty(),
         OAuth2Properties.Basic.CLIENT_ID,
@@ -225,6 +327,7 @@ public interface BasicConfig {
   default BasicConfig merge(Map<String, String> properties) {
     Preconditions.checkNotNull(properties, "Invalid properties map: null");
     Builder builder = builder();
+    builder.tokenOption().set(properties, token());
     builder.clientIdOption().set(properties, clientId());
     builder.clientAuthenticationOption().set(properties, clientAuthentication());
     builder.clientSecretOption().set(properties, clientSecret());
@@ -232,6 +335,7 @@ public interface BasicConfig {
     builder.tokenEndpointOption().set(properties, tokenEndpoint());
     builder.grantTypeOption().set(properties, grantType());
     builder.scopesOption().set(properties, scopes());
+    builder.dialectOption().set(properties, dialect());
     builder.extraRequestParametersOption().set(properties, extraRequestParameters());
     builder.timeoutOption().set(properties, timeout());
     builder.minTimeout(minTimeout());
@@ -250,6 +354,7 @@ public interface BasicConfig {
     @CanIgnoreReturnValue
     default Builder from(Map<String, String> properties) {
       Preconditions.checkNotNull(properties, "Invalid properties map: null");
+      tokenOption().set(properties);
       clientIdOption().set(properties);
       clientAuthenticationOption().set(properties);
       clientSecretOption().set(properties);
@@ -257,10 +362,19 @@ public interface BasicConfig {
       tokenEndpointOption().set(properties);
       grantTypeOption().set(properties);
       scopesOption().set(properties);
+      dialectOption().set(properties);
       extraRequestParametersOption().set(properties);
       timeoutOption().set(properties);
       return this;
     }
+
+    @CanIgnoreReturnValue
+    default Builder token(String token) {
+      return token(AccessToken.of(token));
+    }
+
+    @CanIgnoreReturnValue
+    Builder token(AccessToken token);
 
     @CanIgnoreReturnValue
     Builder issuerUrl(URI issuerUrl);
@@ -292,12 +406,19 @@ public interface BasicConfig {
     Builder extraRequestParameters(Map<String, ? extends String> extraRequestParameters);
 
     @CanIgnoreReturnValue
+    Builder dialect(Dialect dialect);
+
+    @CanIgnoreReturnValue
     Builder timeout(Duration timeout);
 
     @CanIgnoreReturnValue
     Builder minTimeout(Duration minTimeout);
 
     BasicConfig build();
+
+    private ConfigOption<AccessToken> tokenOption() {
+      return ConfigOptions.simple(OAuth2Properties.Basic.TOKEN, this::token, AccessToken::of);
+    }
 
     private ConfigOption<String> clientIdOption() {
       return ConfigOptions.simple(OAuth2Properties.Basic.CLIENT_ID, this::clientId);
@@ -332,6 +453,11 @@ public interface BasicConfig {
     private ConfigOption<List<String>> scopesOption() {
       return ConfigOptions.simple(
           OAuth2Properties.Basic.SCOPE, this::scopes, ConfigUtils::scopesAsList);
+    }
+
+    private ConfigOption<Dialect> dialectOption() {
+      return ConfigOptions.simple(
+          OAuth2Properties.Basic.DIALECT, this::dialect, Dialect::fromConfigName);
     }
 
     private ConfigOption<Map<String, String>> extraRequestParametersOption() {

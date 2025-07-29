@@ -45,6 +45,6 @@ abstract class ClientCredentialsFlow extends AbstractFlow implements InitialFlow
   @Override
   public CompletionStage<Tokens> fetchNewTokens() {
     ClientCredentialsTokenRequest.Builder request = ClientCredentialsTokenRequest.builder();
-    return invokeTokenEndpoint(request, DefaultTokenResponse.class);
+    return invokeTokenEndpoint(request, DefaultTokenResponse.class, null);
   }
 }

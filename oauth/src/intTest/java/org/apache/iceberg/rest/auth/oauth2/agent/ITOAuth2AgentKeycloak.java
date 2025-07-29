@@ -26,6 +26,7 @@ import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties;
@@ -262,6 +263,39 @@ public class ITOAuth2AgentKeycloak {
       Tokens firstTokens = agent.authenticateInternal();
       introspectToken(firstTokens.accessToken(), TestConstants.CLIENT_ID1);
       soft.assertThat(agent).extracting("tokenRefreshFuture").isNull();
+    }
+  }
+
+  /**
+   * Tests a fixed initial token with standard OAuth2 dialect. It's not possible to refresh or renew
+   * the token since there is no client id and secret available, so token refresh is disabled.
+   */
+  @Test
+  void fixedToken(ImmutableTestEnvironment.Builder envBuilder) {
+    AccessToken accessToken;
+    try (TestEnvironment env = envBuilder.build();
+        OAuth2Agent agent = env.createAgent()) {
+      accessToken = agent.authenticate();
+    }
+
+    try (TestEnvironment env =
+            envBuilder.token(accessToken.payload()).tokenRefreshEnabled(false).build();
+        OAuth2Agent agent = env.createAgent()) {
+      // should use the fixed token
+      Tokens firstTokens = agent.authenticateInternal();
+      soft.assertThat(firstTokens.accessToken().payload()).isEqualTo(accessToken.payload());
+      soft.assertThat(agent).extracting("tokenRefreshFuture").isNull();
+      // cannot refresh the token
+      soft.assertThat(agent.refreshCurrentTokens(firstTokens))
+          .completesExceptionallyWithin(Duration.ofSeconds(10))
+          .withThrowableOfType(ExecutionException.class)
+          .withCauseInstanceOf(OAuth2Agent.MustFetchNewTokensException.class);
+      // cannot fetch new tokens
+      soft.assertThat(agent.fetchNewTokens())
+          .completesExceptionallyWithin(Duration.ofSeconds(10))
+          .withThrowableOfType(ExecutionException.class)
+          .withCauseInstanceOf(IllegalArgumentException.class)
+          .withMessageContaining("Iceberg REST dialect initial token fetches require client_secret to be set");
     }
   }
 

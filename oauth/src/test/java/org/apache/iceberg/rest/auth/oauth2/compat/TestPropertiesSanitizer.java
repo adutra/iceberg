@@ -75,6 +75,25 @@ class TestPropertiesSanitizer {
     assertThat(messages).isEmpty();
   }
 
+  @ParameterizedTest
+  @MethodSource("contextDenyListProperties")
+  void contextForbiddenProperties(String forbiddenProperty) {
+    Map<String, String> input =
+        Map.of(forbiddenProperty, "forbidden", "allowed.property", "allowed");
+    Map<String, String> actual = new PropertiesSanitizer(consumer).sanitizeContextProperties(input);
+    assertThat(actual).containsOnly(entry("allowed.property", "allowed"));
+    assertThat(messages).hasSize(1);
+    Pair<String, String> message = messages.get(0);
+    assertThat(message)
+        .extracting(Pair::first)
+        .isEqualTo("Ignoring property '{}': this property is not allowed in a session context.");
+    assertThat(message).extracting(Pair::second).isEqualTo(forbiddenProperty);
+  }
+
+  static Stream<String> contextDenyListProperties() {
+    return PropertiesSanitizer.CONTEXT_DENY_LIST.stream();
+  }
+
   @Test
   void tableEmptyProperties() {
     Map<String, String> actual =

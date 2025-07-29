@@ -33,7 +33,7 @@ class TestPublicClientAuthenticator {
         ImmutablePublicClientAuthenticator.builder().clientId(TestConstants.CLIENT_ID1).build();
     assertThat(authenticator.clientId()).isEqualTo(TestConstants.CLIENT_ID1);
     ClientCredentialsTokenRequest.Builder builder = ClientCredentialsTokenRequest.builder();
-    authenticator.authenticate(builder, Maps.newHashMap());
+    authenticator.authenticate(builder, Maps.newHashMap(), null);
     assertThat(builder.build().clientId()).isEqualTo(TestConstants.CLIENT_ID1);
   }
 }

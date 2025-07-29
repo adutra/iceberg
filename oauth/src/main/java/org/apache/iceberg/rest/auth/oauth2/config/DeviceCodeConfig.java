@@ -91,6 +91,7 @@ public interface DeviceCodeConfig {
     if (deviceAuthorizationEndpoint().isPresent()) {
       validator.checkEndpoint(
           deviceAuthorizationEndpoint().get(),
+          true,
           OAuth2Properties.DeviceCode.ENDPOINT,
           "device code flow: device authorization endpoint %s");
     }

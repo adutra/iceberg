@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ScheduledExecutorService;
+import javax.annotation.Nullable;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTResponse;
@@ -56,14 +57,16 @@ abstract class AbstractFlow implements Flow {
   abstract ClientAuthenticator clientAuthenticator();
 
   protected <RequestT extends TokenRequest> CompletionStage<Tokens> invokeTokenEndpoint(
-      TokenRequest.Builder<RequestT, ?> builder, Class<? extends TokenResponse> responseType) {
+      TokenRequest.Builder<RequestT, ?> builder,
+      Class<? extends TokenResponse> responseType,
+      @Nullable Tokens currentTokens) {
     return CompletableFuture.supplyAsync(
             () -> {
               URI tokenEndpoint = endpointProvider().resolvedTokenEndpoint();
               builder.extraParameters(spec().basicConfig().extraRequestParameters());
               ConfigUtils.scopesAsString(spec().basicConfig().scopes()).ifPresent(builder::scope);
               Map<String, String> headers = getHeaders();
-              clientAuthenticator().authenticate(builder, headers);
+              clientAuthenticator().authenticate(builder, headers, currentTokens);
               RequestT request = builder.build();
               request.validate();
               LOGGER.debug(
@@ -93,7 +96,7 @@ abstract class AbstractFlow implements Flow {
               DeviceAuthorizationRequest.Builder builder = DeviceAuthorizationRequest.builder();
               ConfigUtils.scopesAsString(spec().basicConfig().scopes()).ifPresent(builder::scope);
               Map<String, String> headers = getHeaders();
-              clientAuthenticator().authenticate(builder, headers);
+              clientAuthenticator().authenticate(builder, headers, null);
               DeviceAuthorizationRequest request = builder.build();
               request.validate();
               LOGGER.debug(

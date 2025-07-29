@@ -148,7 +148,7 @@ abstract class DeviceCodeFlow extends AbstractFlow implements InitialFlow {
     LOGGER.debug("[{}] Device Auth Flow: polling for new tokens", agentName());
     DeviceAccessTokenRequest.Builder request =
         DeviceAccessTokenRequest.builder().deviceCode(deviceCode);
-    invokeTokenEndpoint(request, DefaultTokenResponse.class)
+    invokeTokenEndpoint(request, DefaultTokenResponse.class, null)
         .whenComplete(
             (tokens, error) -> {
               if (error == null) {

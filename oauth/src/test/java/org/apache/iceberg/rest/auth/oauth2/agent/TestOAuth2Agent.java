@@ -20,6 +20,7 @@ package org.apache.iceberg.rest.auth.oauth2.agent;
 
 import static org.apache.iceberg.rest.auth.oauth2.test.TestConstants.ACCESS_TOKEN_EXPIRATION_TIME;
 import static org.apache.iceberg.rest.auth.oauth2.test.TestConstants.REFRESH_TOKEN_EXPIRATION_TIME;
+import static org.apache.iceberg.rest.auth.oauth2.test.TokenAssertions.assertAccessToken;
 import static org.apache.iceberg.rest.auth.oauth2.test.TokenAssertions.assertTokens;
 import static org.assertj.core.api.InstanceOfAssertFactories.ATOMIC_BOOLEAN;
 import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
@@ -39,6 +40,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2Agent.MustFetchNewTokensException;
+import org.apache.iceberg.rest.auth.oauth2.config.Dialect;
 import org.apache.iceberg.rest.auth.oauth2.flow.OAuth2Exception;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.auth.oauth2.test.TestClock;
@@ -67,6 +69,15 @@ class TestOAuth2Agent {
         OAuth2Agent agent = env.createAgent()) {
       Tokens currentTokens = agent.authenticateInternal();
       assertTokens(currentTokens, "access_initial", "refresh_initial");
+    }
+  }
+
+  @Test
+  void testClientCredentialsIcebergDialect() {
+    try (TestEnvironment env = TestEnvironment.builder().dialect(Dialect.ICEBERG_REST).build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens currentTokens = agent.authenticateInternal();
+      assertTokens(currentTokens, "access_initial", null);
     }
   }
 
@@ -346,6 +357,17 @@ class TestOAuth2Agent {
   }
 
   @Test
+  void testRefreshTokenIcebergDialect() throws InterruptedException, ExecutionException {
+    try (TestEnvironment env = TestEnvironment.builder().dialect(Dialect.ICEBERG_REST).build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens currentTokens =
+          Tokens.of(AccessToken.of("access_initial", "Bearer", ACCESS_TOKEN_EXPIRATION_TIME), null);
+      Tokens tokens = agent.refreshCurrentTokens(currentTokens).toCompletableFuture().get();
+      assertTokens(tokens, "access_refreshed", null);
+    }
+  }
+
+  @Test
   void testRefreshTokenExpired() {
     try (TestEnvironment env = TestEnvironment.builder().build();
         OAuth2Agent agent = env.createAgent()) {
@@ -475,6 +497,38 @@ class TestOAuth2Agent {
           soft.assertThat(agent3.fetchNewTokens().toCompletableFuture().get()).isEqualTo(tokens);
         }
       }
+    }
+  }
+
+  @Test
+  void testStaticToken() {
+    try (TestEnvironment env = TestEnvironment.builder().token("access_initial").build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens actual = agent.authenticateInternal();
+      assertAccessToken(actual.accessToken(), "access_initial", null);
+      // Cannot refresh a static token with standard dialect
+      // as it does not have a refresh token
+      soft.assertThat(agent.refreshCurrentTokens(actual))
+          .completesExceptionallyWithin(Duration.ofSeconds(10))
+          .withThrowableOfType(ExecutionException.class)
+          .withCauseInstanceOf(MustFetchNewTokensException.class);
+    }
+  }
+
+  @Test
+  void testStaticTokenIcebergDialect() throws InterruptedException, ExecutionException {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .dialect(Dialect.ICEBERG_REST)
+                .token("access_initial")
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens actual = agent.authenticateInternal();
+      assertAccessToken(actual.accessToken(), "access_initial", null);
+      // Iceberg dialect is able to refresh a static token without a refresh token
+      // (using token exchange with the static token as subject token)
+      Tokens refreshed = agent.refreshCurrentTokens(actual).toCompletableFuture().get();
+      assertTokens(refreshed, "access_refreshed", null);
     }
   }
 

@@ -49,12 +49,14 @@ import org.apache.iceberg.rest.HTTPRequest;
 import org.apache.iceberg.rest.HTTPRequest.HTTPMethod;
 import org.apache.iceberg.rest.ImmutableHTTPRequest;
 import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Manager;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.TokenExchange;
 import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.auth.oauth2.cache.AuthSessionCache;
+import org.apache.iceberg.rest.auth.oauth2.config.Dialect;
 import org.apache.iceberg.rest.auth.oauth2.config.Secret;
 import org.apache.iceberg.rest.auth.oauth2.flow.OAuth2Exception;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
@@ -64,6 +66,8 @@ import org.assertj.core.api.InstanceOfAssertFactory;
 import org.assertj.core.api.MapAssert;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mockito;
 
 class TestOAuth2Manager {
@@ -161,6 +165,42 @@ class TestOAuth2Manager {
           assertThatThrownBy(() -> session.authenticate(request))
               .isInstanceOf(OAuth2Exception.class)
               .hasMessageContaining("OAuth2 request failed: Invalid request");
+        }
+      }
+    }
+
+    @Test
+    void catalogSessionWithInitAndIcebergRestDialect() throws IOException {
+      try (TestEnvironment env =
+              TestEnvironment.builder()
+                  .dialect(Dialect.ICEBERG_REST)
+                  .tokenEndpoint(URI.create(ResourcePaths.tokens()))
+                  .build();
+          OAuth2Manager manager = new OAuth2Manager("test")) {
+        Map<String, String> properties =
+            Map.of(
+                Basic.DIALECT,
+                Dialect.ICEBERG_REST.name(),
+                Basic.CLIENT_ID,
+                TestConstants.CLIENT_ID1,
+                Basic.CLIENT_SECRET,
+                TestConstants.CLIENT_SECRET1,
+                Basic.SCOPE,
+                TestConstants.SCOPE1,
+                Basic.EXTRA_PARAMS_PREFIX + "extra1",
+                "value1");
+        try (HTTPClient httpClient = env.newHttpClientBuilder(Map.of()).build();
+            AuthSession session = manager.initSession(httpClient, properties)) {
+          HTTPRequest actual = session.authenticate(request);
+          assertThat(actual.headers().entries("Authorization"))
+              .containsOnly(HTTPHeader.of("Authorization", "Bearer access_initial"));
+        }
+
+        try (HTTPClient httpClient = env.newHttpClientBuilder(Map.of()).build();
+            AuthSession session = manager.catalogSession(httpClient, properties)) {
+          HTTPRequest actual = session.authenticate(request);
+          assertThat(actual.headers().entries("Authorization"))
+              .containsOnly(HTTPHeader.of("Authorization", "Bearer access_initial"));
         }
       }
     }
@@ -592,9 +632,10 @@ class TestOAuth2Manager {
         "sessionCatalog.authManager.sessionCache.sessionCache";
     private static final String CATALOG_AUTH = "sessionCatalog.catalogAuth";
 
-    @Test
-    void testCatalogProperties() throws IOException {
-      try (TestEnvironment env = TestEnvironment.builder().build();
+    @ParameterizedTest
+    @EnumSource(Dialect.class)
+    void testCatalogProperties(Dialect dialect) throws IOException {
+      try (TestEnvironment env = TestEnvironment.builder().dialect(dialect).build();
           RESTCatalog catalog = env.createCatalog(true)) {
         Table table = catalog.loadTable(TABLE_IDENTIFIER);
         assertThat(table).isNotNull();
@@ -628,9 +669,11 @@ class TestOAuth2Manager {
       }
     }
 
-    @Test
-    void testCatalogAndSessionProperties() throws IOException {
-      try (TestEnvironment env = TestEnvironment.builder().sessionContext(SESSION_CONTEXT).build();
+    @ParameterizedTest
+    @EnumSource(Dialect.class)
+    void testCatalogAndSessionProperties(Dialect dialect) throws IOException {
+      try (TestEnvironment env =
+              TestEnvironment.builder().dialect(dialect).sessionContext(SESSION_CONTEXT).build();
           RESTCatalog catalog = env.createCatalog(true)) {
         Table table = catalog.loadTable(TABLE_IDENTIFIER);
         assertThat(table).isNotNull();
@@ -649,10 +692,14 @@ class TestOAuth2Manager {
       }
     }
 
-    @Test
-    void testCatalogAndTableProperties() throws IOException {
+    @ParameterizedTest
+    @EnumSource(Dialect.class)
+    void testCatalogAndTableProperties(Dialect dialect) throws IOException {
       try (TestEnvironment env =
-              TestEnvironment.builder().tableProperties(Map.of(Basic.SCOPE, SCOPE2)).build();
+              TestEnvironment.builder()
+                  .dialect(dialect)
+                  .tableProperties(Map.of(Basic.SCOPE, SCOPE2))
+                  .build();
           RESTCatalog catalog = env.createCatalog(true)) {
         Table table = catalog.loadTable(TABLE_IDENTIFIER);
         assertThat(table).isNotNull();
@@ -673,10 +720,12 @@ class TestOAuth2Manager {
       }
     }
 
-    @Test
-    void testCatalogAndSessionAndTableProperties() throws IOException {
+    @ParameterizedTest
+    @EnumSource(Dialect.class)
+    void testCatalogAndSessionAndTableProperties(Dialect dialect) throws IOException {
       try (TestEnvironment env =
               TestEnvironment.builder()
+                  .dialect(dialect)
                   .sessionContext(SESSION_CONTEXT)
                   .tableProperties(Map.of(Basic.SCOPE, SCOPE3))
                   .build();

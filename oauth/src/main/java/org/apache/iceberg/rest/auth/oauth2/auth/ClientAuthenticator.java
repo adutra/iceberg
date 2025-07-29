@@ -19,8 +19,10 @@
 package org.apache.iceberg.rest.auth.oauth2.auth;
 
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.iceberg.rest.auth.oauth2.rest.ClientRequest;
 import org.apache.iceberg.rest.auth.oauth2.rest.ClientRequest.Builder;
+import org.apache.iceberg.rest.auth.oauth2.token.Tokens;
 
 /**
  * A client authenticator. This interface is used to authenticate a client by adding the necessary
@@ -33,9 +35,13 @@ public interface ClientAuthenticator {
    *
    * @param request the {@link Builder request} to authenticate
    * @param headers the current request headers; the map is mutable and can be modified
+   * @param currentTokens the current tokens; may be null if no tokens are available (this parameter
+   *     is only useful for Iceberg REST dialect authentication)
    * @param <R> the type of the request
    * @param <B> the type of the request builder
    */
   <R extends ClientRequest, B extends ClientRequest.Builder<R, B>> void authenticate(
-      ClientRequest.Builder<R, B> request, Map<String, String> headers);
+      ClientRequest.Builder<R, B> request,
+      Map<String, String> headers,
+      @Nullable Tokens currentTokens);
 }

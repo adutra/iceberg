@@ -88,6 +88,10 @@ public final class LegacyPropertiesMigrator {
           }
 
           break;
+        case org.apache.iceberg.rest.auth.OAuth2Properties.TOKEN:
+          warnOnLegacyIcebergOAuth2Property(entry.getKey(), OAuth2Properties.Basic.TOKEN);
+          migrated.put(OAuth2Properties.Basic.TOKEN, entry.getValue());
+          break;
         case org.apache.iceberg.rest.auth.OAuth2Properties.TOKEN_EXPIRES_IN_MS:
           warnOnLegacyIcebergOAuth2Property(
               entry.getKey(), OAuth2Properties.TokenRefresh.ACCESS_TOKEN_LIFESPAN);

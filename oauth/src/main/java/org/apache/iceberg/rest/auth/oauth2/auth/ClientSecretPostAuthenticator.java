@@ -19,8 +19,10 @@
 package org.apache.iceberg.rest.auth.oauth2.auth;
 
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.auth.oauth2.rest.ClientRequest;
+import org.apache.iceberg.rest.auth.oauth2.token.Tokens;
 import org.immutables.value.Value;
 
 /**
@@ -36,7 +38,9 @@ public abstract class ClientSecretPostAuthenticator implements ClientSecretAuthe
 
   @Override
   public final <R extends ClientRequest, B extends ClientRequest.Builder<R, B>> void authenticate(
-      ClientRequest.Builder<R, B> request, Map<String, String> headers) {
+      ClientRequest.Builder<R, B> request,
+      Map<String, String> headers,
+      @Nullable Tokens currentTokens) {
     request.clientId(clientId()).clientSecret(clientSecret().value());
   }
 }

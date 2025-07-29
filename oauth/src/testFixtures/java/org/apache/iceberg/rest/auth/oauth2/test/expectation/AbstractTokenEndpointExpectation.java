@@ -32,7 +32,10 @@ public abstract class AbstractTokenEndpointExpectation extends AbstractExpectati
 
   protected HttpRequest tokenRequestTemplate() {
     URI tokenEndpoint = testEnvironment().tokenEndpoint();
-    String path = tokenEndpoint.getPath();
+    String path =
+        tokenEndpoint.isAbsolute()
+            ? tokenEndpoint.getPath()
+            : testEnvironment().catalogServerContextPath() + tokenEndpoint.getPath();
     return HttpRequest.request()
         .withMethod("POST")
         .withPath(path)

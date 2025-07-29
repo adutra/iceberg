@@ -31,7 +31,12 @@ import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.auth.oauth2.token.TypedToken;
 import org.immutables.value.Value;
 
-/** Configuration for OAuth2 token exchange. */
+/**
+ * Configuration for OAuth2 token exchange.
+ *
+ * <p>Note: this configuration is not used for token refreshes when the OAuth2 dialect is {@link
+ * Dialect#ICEBERG_REST}.
+ */
 @Value.Immutable
 @OAuth2ImmutableStyle
 public interface TokenExchangeConfig {

@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
 
 public final class PropertiesSanitizer {
 
-  public static final Set<String> CONTEXT_DENY_LIST = Set.of();
+  public static final Set<String> CONTEXT_DENY_LIST = Set.of(OAuth2Properties.Basic.DIALECT);
 
   public static final Set<String> TABLE_DENY_LIST =
       Set.of(

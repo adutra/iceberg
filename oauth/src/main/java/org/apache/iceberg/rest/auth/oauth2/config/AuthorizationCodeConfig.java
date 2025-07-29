@@ -123,6 +123,7 @@ public interface AuthorizationCodeConfig {
     if (authorizationEndpoint().isPresent()) {
       validator.checkEndpoint(
           authorizationEndpoint().get(),
+          true,
           OAuth2Properties.AuthorizationCode.ENDPOINT,
           "authorization code flow: authorization endpoint %s");
     }

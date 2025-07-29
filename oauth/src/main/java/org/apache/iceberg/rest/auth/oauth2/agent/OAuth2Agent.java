@@ -88,17 +88,23 @@ public final class OAuth2Agent implements Closeable {
     name = spec.runtimeConfig().agentName();
     clock = spec.runtimeConfig().clock();
     lastAccess = clock.instant();
-    // when user interaction is not required, token fetch can happen immediately;
-    // otherwise, it will be deferred until authenticate() is called the first time,
-    // in order to avoid bothering the user with a login prompt before the agent is actually used.
-    boolean requiresUserInteraction = spec.basicConfig().grantType().requiresUserInteraction();
-    CompletableFuture<?> agentReady = requiresUserInteraction ? agentAccessed : COMPLETED_FUTURE;
-    CompletableFuture<Tokens> tokensFuture =
-        agentReady.thenComposeAsync(v -> fetchNewTokens(), executor);
-    this.currentTokensFuture = tokensFuture;
-    tokensFuture
-        .whenComplete(this::log)
-        .whenComplete((tokens, error) -> maybeScheduleTokensRenewal(tokens));
+    if (spec.basicConfig().token().isPresent()) {
+      Tokens currentTokens = Tokens.of(spec.basicConfig().token().get(), null);
+      currentTokensFuture = CompletableFuture.completedFuture(currentTokens);
+      maybeScheduleTokensRenewal(currentTokens);
+    } else {
+      // when user interaction is not required, token fetch can happen immediately;
+      // otherwise, it will be deferred until authenticate() is called the first time,
+      // in order to avoid bothering the user with a login prompt before the agent is actually used.
+      boolean requiresUserInteraction = spec.basicConfig().grantType().requiresUserInteraction();
+      CompletableFuture<?> agentReady = requiresUserInteraction ? agentAccessed : COMPLETED_FUTURE;
+      CompletableFuture<Tokens> tokensFuture =
+          agentReady.thenComposeAsync(v -> fetchNewTokens(), executor);
+      this.currentTokensFuture = tokensFuture;
+      tokensFuture
+          .whenComplete(this::log)
+          .whenComplete((tokens, error) -> maybeScheduleTokensRenewal(tokens));
+    }
   }
 
   /** Copy constructor. */
@@ -231,10 +237,12 @@ public final class OAuth2Agent implements Closeable {
 
   CompletionStage<Tokens> refreshCurrentTokens(Tokens currentTokens) {
     RefreshFlow flow = flowFactory.createTokenRefreshFlow();
-    RefreshToken refreshToken = currentTokens.refreshToken();
-    if (isRisky(refreshToken, clock.instant())) {
-      LOGGER.debug("[{}] Must fetch new tokens, refresh token is null or almost expired", name);
-      return MUST_FETCH_NEW_TOKENS_FUTURE;
+    if (flow.requiresRefreshToken()) {
+      RefreshToken refreshToken = currentTokens.refreshToken();
+      if (isRisky(refreshToken, clock.instant())) {
+        LOGGER.debug("[{}] Must fetch new tokens, refresh token is null or almost expired", name);
+        return MUST_FETCH_NEW_TOKENS_FUTURE;
+      }
     }
 
     LOGGER.debug("[{}] Refreshing tokens using {}", name, flow.grantType());

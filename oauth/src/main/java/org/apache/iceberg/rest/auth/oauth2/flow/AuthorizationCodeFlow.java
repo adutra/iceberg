@@ -284,7 +284,7 @@ abstract class AuthorizationCodeFlow extends AbstractFlow implements InitialFlow
       request.codeVerifier(codeVerifier);
     }
 
-    return invokeTokenEndpoint(request, DefaultTokenResponse.class);
+    return invokeTokenEndpoint(request, DefaultTokenResponse.class, null);
   }
 
   private void log(Throwable error) {

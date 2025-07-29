@@ -121,6 +121,22 @@ class TestLegacyPropertiesMigrator {
   }
 
   @Test
+  void token() {
+    Map<String, String> input = Map.of(OAuth2Properties.TOKEN, "access-token-123");
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+    assertThat(actual).isEqualTo(Map.of(Basic.TOKEN, "access-token-123"));
+    assertThat(messages).hasSize(1);
+    Pair<String, String[]> message = messages.get(0);
+    assertThat(message)
+        .extracting(Pair::first)
+        .isEqualTo("Detected legacy property '{}', please use option {} instead.");
+    assertThat(message)
+        .extracting(Pair::second)
+        .asInstanceOf(array(String[].class))
+        .containsExactly(OAuth2Properties.TOKEN, Basic.TOKEN);
+  }
+
+  @Test
   void tokenExpiresInMs() {
     Map<String, String> input = Map.of(OAuth2Properties.TOKEN_EXPIRES_IN_MS, "300000");
     Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
@@ -250,6 +266,7 @@ class TestLegacyPropertiesMigrator {
     Map<String, String> input =
         ImmutableMap.<String, String>builder()
             .put(OAuth2Properties.CREDENTIAL, "client1:secret1")
+            .put(OAuth2Properties.TOKEN, "access-token")
             .put(OAuth2Properties.TOKEN_EXPIRES_IN_MS, "300000")
             .put(OAuth2Properties.TOKEN_REFRESH_ENABLED, "true")
             .put(OAuth2Properties.OAUTH2_SERVER_URI, "https://example.com/token")
@@ -267,6 +284,7 @@ class TestLegacyPropertiesMigrator {
         ImmutableMap.<String, String>builder()
             .put(Basic.CLIENT_ID, "client1")
             .put(Basic.CLIENT_SECRET, "secret1")
+            .put(Basic.TOKEN, "access-token")
             .put(TokenRefresh.ACCESS_TOKEN_LIFESPAN, Duration.ofMillis(300000).toString())
             .put(TokenRefresh.ENABLED, "true")
             .put(Basic.TOKEN_ENDPOINT, "https://example.com/token")
@@ -278,8 +296,8 @@ class TestLegacyPropertiesMigrator {
 
     assertThat(actual).containsExactlyInAnyOrderEntriesOf(expected);
 
-    // Should have 8 log entries: 7 migration warnings + 1 ignored property warning
-    assertThat(messages).hasSize(8);
+    // Should have 9 log entries: 8 migration warnings + 1 ignored property warning
+    assertThat(messages).hasSize(9);
 
     List<String> legacyProperties =
         messages.stream()
@@ -292,6 +310,7 @@ class TestLegacyPropertiesMigrator {
     assertThat(legacyProperties)
         .containsExactlyInAnyOrder(
             OAuth2Properties.CREDENTIAL,
+            OAuth2Properties.TOKEN,
             OAuth2Properties.TOKEN_EXPIRES_IN_MS,
             OAuth2Properties.TOKEN_REFRESH_ENABLED,
             OAuth2Properties.OAUTH2_SERVER_URI,
@@ -315,6 +334,7 @@ class TestLegacyPropertiesMigrator {
     Map<String, String> input =
         ImmutableMap.<String, String>builder()
             .put(OAuth2Properties.CREDENTIAL, "client1:secret1")
+            .put(OAuth2Properties.TOKEN, "access-token")
             .put(OAuth2Properties.TOKEN_EXPIRES_IN_MS, "300000")
             .put(OAuth2Properties.TOKEN_REFRESH_ENABLED, "true")
             .put(OAuth2Properties.OAUTH2_SERVER_URI, "https://example.com/token")
@@ -326,6 +346,6 @@ class TestLegacyPropertiesMigrator {
     LegacyPropertiesMigrator migrator = new LegacyPropertiesMigrator(consumer);
     migrator.migrate(input);
     migrator.migrate(input);
-    assertThat(messages).hasSize(8);
+    assertThat(messages).hasSize(9);
   }
 }

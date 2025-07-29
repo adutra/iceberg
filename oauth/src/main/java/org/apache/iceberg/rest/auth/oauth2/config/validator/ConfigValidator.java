@@ -42,10 +42,19 @@ public final class ConfigValidator {
     }
   }
 
-  public void checkEndpoint(URI endpoint, String offendingKey, String msg) {
-    check(endpoint.isAbsolute(), offendingKey, msg, "must not be relative");
+  public void checkEndpoint(
+      URI endpoint, boolean requireAbsolute, String offendingKey, String msg) {
+    check(!requireAbsolute || endpoint.isAbsolute(), offendingKey, msg, "must not be relative");
     check(endpoint.getQuery() == null, offendingKey, msg, "must not have a query part");
     check(endpoint.getFragment() == null, offendingKey, msg, "must not have a fragment part");
+    if (!requireAbsolute && !endpoint.isAbsolute()) {
+      // Iceberg REST client requires relative paths to not start with a slash
+      check(
+          endpoint.getPath() != null && !endpoint.getPath().startsWith("/"),
+          offendingKey,
+          msg,
+          "must not start with a slash when it's a relative URL");
+    }
   }
 
   public void validate() {

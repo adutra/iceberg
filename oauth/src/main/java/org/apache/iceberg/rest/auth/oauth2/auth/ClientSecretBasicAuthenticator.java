@@ -21,8 +21,10 @@ package org.apache.iceberg.rest.auth.oauth2.auth;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.auth.oauth2.rest.ClientRequest;
+import org.apache.iceberg.rest.auth.oauth2.token.Tokens;
 import org.immutables.value.Value;
 
 /**
@@ -38,7 +40,9 @@ public abstract class ClientSecretBasicAuthenticator implements ClientSecretAuth
 
   @Override
   public final <R extends ClientRequest, B extends ClientRequest.Builder<R, B>> void authenticate(
-      ClientRequest.Builder<R, B> request, Map<String, String> headers) {
+      ClientRequest.Builder<R, B> request,
+      Map<String, String> headers,
+      @Nullable Tokens currentTokens) {
     String auth =
         Base64.getEncoder()
             .encodeToString(
