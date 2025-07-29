@@ -111,4 +111,26 @@ public class TestMetadataDiscoveryResponseParser {
                 + "  \"token_endpoint\" : \"https://example.com/token\"\n"
                 + "}");
   }
+
+  @Test
+  public void roundTripSerdeWithDeviceAuthorizationEndpoint() {
+    MetadataDiscoveryResponse response =
+        ImmutableMetadataDiscoveryResponse.builder()
+            .issuerUrl(URI.create("https://example.com"))
+            .tokenEndpoint(URI.create("https://example.com/token"))
+            .authorizationEndpoint(URI.create("https://example.com/authorize"))
+            .deviceAuthorizationEndpoint(URI.create("https://example.com/device_authorization"))
+            .build();
+
+    String json = MetadataDiscoveryResponseParser.toJson(response, true);
+    assertThat(MetadataDiscoveryResponseParser.fromJson(json)).isEqualTo(response);
+    assertThat(json)
+        .isEqualTo(
+            "{\n"
+                + "  \"issuer\" : \"https://example.com\",\n"
+                + "  \"authorization_endpoint\" : \"https://example.com/authorize\",\n"
+                + "  \"token_endpoint\" : \"https://example.com/token\",\n"
+                + "  \"device_authorization_endpoint\" : \"https://example.com/device_authorization\"\n"
+                + "}");
+  }
 }

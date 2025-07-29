@@ -32,6 +32,7 @@ public class MetadataDiscoveryResponseParser {
   private static final String ISSUER = "issuer";
   private static final String AUTHORIZATION_ENDPOINT = "authorization_endpoint";
   private static final String TOKEN_ENDPOINT = "token_endpoint";
+  private static final String DEVICE_AUTHORIZATION_ENDPOINT = "device_authorization_endpoint";
 
   private MetadataDiscoveryResponseParser() {}
 
@@ -50,8 +51,17 @@ public class MetadataDiscoveryResponseParser {
     gen.writeStartObject();
 
     gen.writeStringField(ISSUER, response.issuerUrl().toString());
-    gen.writeStringField(AUTHORIZATION_ENDPOINT, response.authorizationEndpoint().toString());
+
+    if (response.authorizationEndpoint() != null) {
+      gen.writeStringField(AUTHORIZATION_ENDPOINT, response.authorizationEndpoint().toString());
+    }
+
     gen.writeStringField(TOKEN_ENDPOINT, response.tokenEndpoint().toString());
+
+    URI deviceAuthorizationEndpoint = response.deviceAuthorizationEndpoint();
+    if (deviceAuthorizationEndpoint != null) {
+      gen.writeStringField(DEVICE_AUTHORIZATION_ENDPOINT, deviceAuthorizationEndpoint.toString());
+    }
 
     gen.writeEndObject();
   }
@@ -73,6 +83,11 @@ public class MetadataDiscoveryResponseParser {
             .issuerUrl(issuerUrl)
             .tokenEndpoint(tokenEndpoint)
             .authorizationEndpoint(authorizationEndpoint);
+
+    if (json.hasNonNull(DEVICE_AUTHORIZATION_ENDPOINT)) {
+      builder.deviceAuthorizationEndpoint(
+          URI.create(JsonUtil.getString(DEVICE_AUTHORIZATION_ENDPOINT, json)));
+    }
 
     return builder.build();
   }

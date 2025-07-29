@@ -24,8 +24,10 @@ import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.oauth2.OAuth2Properties.AuthorizationCode;
+import org.apache.iceberg.rest.oauth2.OAuth2Properties.DeviceCode;
 import org.apache.iceberg.rest.oauth2.config.AuthorizationCodeConfig;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.oauth2.config.DeviceCodeConfig;
 import org.apache.iceberg.rest.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.oauth2.config.TokenExchangeConfig;
@@ -58,6 +60,12 @@ public interface OAuth2AgentSpec {
   @Value.Default
   default AuthorizationCodeConfig authorizationCodeConfig() {
     return AuthorizationCodeConfig.DEFAULT;
+  }
+
+  /** The device code configuration. Required for the {@link GrantType#DEVICE_CODE} grant type. */
+  @Value.Default
+  default DeviceCodeConfig deviceCodeConfig() {
+    return DeviceCodeConfig.DEFAULT;
   }
 
   /** The token refresh configuration. Optional. */
@@ -106,6 +114,15 @@ public interface OAuth2AgentSpec {
           GrantType.AUTHORIZATION_CODE.commonName());
     }
 
+    if (basicConfig().grantType() == GrantType.DEVICE_CODE) {
+      validator.check(
+          basicConfig().issuerUrl().isPresent()
+              || deviceCodeConfig().deviceAuthorizationEndpoint().isPresent(),
+          List.of(OAuth2Properties.Basic.ISSUER_URL, DeviceCode.ENDPOINT),
+          "either issuer URL or device authorization endpoint must be set if grant type is '%s'",
+          GrantType.DEVICE_CODE.commonName());
+    }
+
     validator.validate();
   }
 
@@ -116,6 +133,7 @@ public interface OAuth2AgentSpec {
         .basicConfig(basicConfig().merge(properties))
         .resourceOwnerPasswordConfig(resourceOwnerPasswordConfig().merge(properties))
         .authorizationCodeConfig(authorizationCodeConfig().merge(properties))
+        .deviceCodeConfig(deviceCodeConfig().merge(properties))
         .tokenRefreshConfig(tokenRefreshConfig().merge(properties))
         .tokenExchangeConfig(tokenExchangeConfig().merge(properties))
         .runtimeConfig(runtimeConfig().merge(properties))
@@ -146,6 +164,7 @@ public interface OAuth2AgentSpec {
           .resourceOwnerPasswordConfig(
               ResourceOwnerPasswordConfig.builder().from(properties).build())
           .authorizationCodeConfig(AuthorizationCodeConfig.builder().from(properties).build())
+          .deviceCodeConfig(DeviceCodeConfig.builder().from(properties).build())
           .tokenRefreshConfig(TokenRefreshConfig.builder().from(properties).build())
           .tokenExchangeConfig(TokenExchangeConfig.builder().from(properties).build())
           .runtimeConfig(RuntimeConfig.builder().from(properties).build());
@@ -159,6 +178,9 @@ public interface OAuth2AgentSpec {
 
     @CanIgnoreReturnValue
     Builder authorizationCodeConfig(AuthorizationCodeConfig authorizationCodeConfig);
+
+    @CanIgnoreReturnValue
+    Builder deviceCodeConfig(DeviceCodeConfig deviceCodeConfig);
 
     @CanIgnoreReturnValue
     Builder tokenRefreshConfig(TokenRefreshConfig tokenRefreshConfig);

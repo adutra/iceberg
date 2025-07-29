@@ -25,6 +25,7 @@ public enum GrantType {
   CLIENT_CREDENTIALS(GrantCanonicalNames.CLIENT_CREDENTIALS, GrantCommonNames.CLIENT_CREDENTIALS),
   PASSWORD(GrantCanonicalNames.PASSWORD, GrantCommonNames.PASSWORD),
   AUTHORIZATION_CODE(GrantCanonicalNames.AUTHORIZATION_CODE, GrantCommonNames.AUTHORIZATION_CODE),
+  DEVICE_CODE(GrantCanonicalNames.DEVICE_CODE, GrantCommonNames.DEVICE_CODE),
   REFRESH_TOKEN(GrantCanonicalNames.REFRESH_TOKEN, GrantCommonNames.REFRESH_TOKEN),
   TOKEN_EXCHANGE(GrantCanonicalNames.TOKEN_EXCHANGE, GrantCommonNames.TOKEN_EXCHANGE);
 
@@ -57,7 +58,7 @@ public enum GrantType {
   }
 
   public boolean requiresUserInteraction() {
-    return this == AUTHORIZATION_CODE;
+    return this == AUTHORIZATION_CODE || this == DEVICE_CODE;
   }
 
   public boolean initial() {

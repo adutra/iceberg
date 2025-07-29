@@ -31,6 +31,9 @@ import java.io.IOException;
 import org.apache.iceberg.rest.oauth2.rest.AuthorizationCodeTokenRequest;
 import org.apache.iceberg.rest.oauth2.rest.ClientCredentialsTokenRequest;
 import org.apache.iceberg.rest.oauth2.rest.DefaultTokenResponse;
+import org.apache.iceberg.rest.oauth2.rest.DeviceAccessTokenRequest;
+import org.apache.iceberg.rest.oauth2.rest.DeviceAuthorizationRequest;
+import org.apache.iceberg.rest.oauth2.rest.DeviceAuthorizationResponse;
 import org.apache.iceberg.rest.oauth2.rest.MetadataDiscoveryResponse;
 import org.apache.iceberg.rest.oauth2.rest.PasswordTokenRequest;
 import org.apache.iceberg.rest.oauth2.rest.RefreshTokenRequest;
@@ -64,6 +67,13 @@ public final class OAuth2Serializers {
             AuthorizationCodeTokenRequest.class, new AuthorizationCodeTokenRequestSerializer())
         .addDeserializer(
             AuthorizationCodeTokenRequest.class, new AuthorizationCodeTokenRequestDeserializer())
+        // DeviceAccessTokenRequest
+        .addSerializer(DeviceAccessTokenRequest.class, new DeviceAccessTokenRequestSerializer())
+        .addDeserializer(DeviceAccessTokenRequest.class, new DeviceAccessTokenRequestDeserializer())
+        // DeviceAuthorizationRequest
+        .addSerializer(DeviceAuthorizationRequest.class, new DeviceAuthorizationRequestSerializer())
+        .addDeserializer(
+            DeviceAuthorizationRequest.class, new DeviceAuthorizationRequestDeserializer())
         // Responses
         // DefaultTokenResponse
         .addSerializer(DefaultTokenResponse.class, new DefaultTokenResponseSerializer())
@@ -74,7 +84,12 @@ public final class OAuth2Serializers {
         // MetadataDiscoveryResponse
         .addSerializer(MetadataDiscoveryResponse.class, new MetadataDiscoveryResponseSerializer())
         .addDeserializer(
-            MetadataDiscoveryResponse.class, new MetadataDiscoveryResponseDeserializer());
+            MetadataDiscoveryResponse.class, new MetadataDiscoveryResponseDeserializer())
+        // DeviceAuthorizationResponse
+        .addSerializer(
+            DeviceAuthorizationResponse.class, new DeviceAuthorizationResponseSerializer())
+        .addDeserializer(
+            DeviceAuthorizationResponse.class, new DeviceAuthorizationResponseDeserializer());
 
     mapper.registerModule(module);
   }
@@ -173,6 +188,45 @@ public final class OAuth2Serializers {
     }
   }
 
+  static class DeviceAccessTokenRequestSerializer extends JsonSerializer<DeviceAccessTokenRequest> {
+    @Override
+    public void serialize(
+        DeviceAccessTokenRequest request, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      DeviceAccessTokenRequestParser.toJson(request, gen);
+    }
+  }
+
+  static class DeviceAccessTokenRequestDeserializer
+      extends JsonDeserializer<DeviceAccessTokenRequest> {
+    @Override
+    public DeviceAccessTokenRequest deserialize(JsonParser p, DeserializationContext context)
+        throws IOException {
+      JsonNode jsonNode = p.getCodec().readTree(p);
+      return DeviceAccessTokenRequestParser.fromJson(jsonNode);
+    }
+  }
+
+  static class DeviceAuthorizationRequestSerializer
+      extends JsonSerializer<DeviceAuthorizationRequest> {
+    @Override
+    public void serialize(
+        DeviceAuthorizationRequest request, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      DeviceAuthorizationRequestParser.toJson(request, gen);
+    }
+  }
+
+  static class DeviceAuthorizationRequestDeserializer
+      extends JsonDeserializer<DeviceAuthorizationRequest> {
+    @Override
+    public DeviceAuthorizationRequest deserialize(JsonParser p, DeserializationContext context)
+        throws IOException {
+      JsonNode jsonNode = p.getCodec().readTree(p);
+      return DeviceAuthorizationRequestParser.fromJson(jsonNode);
+    }
+  }
+
   static class DefaultTokenResponseSerializer extends JsonSerializer<DefaultTokenResponse> {
     @Override
     public void serialize(
@@ -206,6 +260,26 @@ public final class OAuth2Serializers {
         throws IOException {
       JsonNode jsonNode = p.getCodec().readTree(p);
       return TokenExchangeResponseParser.fromJson(jsonNode);
+    }
+  }
+
+  static class DeviceAuthorizationResponseSerializer
+      extends JsonSerializer<DeviceAuthorizationResponse> {
+    @Override
+    public void serialize(
+        DeviceAuthorizationResponse request, JsonGenerator gen, SerializerProvider serializers)
+        throws IOException {
+      DeviceAuthorizationResponseParser.toJson(request, gen);
+    }
+  }
+
+  static class DeviceAuthorizationResponseDeserializer
+      extends JsonDeserializer<DeviceAuthorizationResponse> {
+    @Override
+    public DeviceAuthorizationResponse deserialize(JsonParser p, DeserializationContext context)
+        throws IOException {
+      JsonNode jsonNode = p.getCodec().readTree(p);
+      return DeviceAuthorizationResponseParser.fromJson(jsonNode);
     }
   }
 

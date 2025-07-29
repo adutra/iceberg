@@ -20,8 +20,14 @@ package org.apache.iceberg.rest.oauth2.test.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +53,26 @@ public abstract class UserFlow implements Runnable {
    * emulator thread.
    */
   protected abstract Consumer<Throwable> errorListener();
+
+  protected static void postForm(HttpURLConnection conn, Map<String, String> data)
+      throws IOException {
+    conn.setRequestMethod("POST");
+    conn.addRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+    conn.setDoOutput(true);
+    try (OutputStream out = conn.getOutputStream()) {
+      for (Iterator<String> iterator = data.keySet().iterator(); iterator.hasNext(); ) {
+        String name = iterator.next();
+        String value = data.get(name);
+        out.write(URLEncoder.encode(name, StandardCharsets.UTF_8).getBytes(StandardCharsets.UTF_8));
+        out.write('=');
+        out.write(
+            URLEncoder.encode(value, StandardCharsets.UTF_8).getBytes(StandardCharsets.UTF_8));
+        if (iterator.hasNext()) {
+          out.write('&');
+        }
+      }
+    }
+  }
 
   protected static URI readRedirectUrl(HttpURLConnection conn) throws Exception {
     conn.setInstanceFollowRedirects(false);

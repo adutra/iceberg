@@ -86,6 +86,7 @@ public final class OAuth2Properties {
      *   <li>{@value GrantCommonNames#CLIENT_CREDENTIALS}
      *   <li>{@value GrantCommonNames#PASSWORD}
      *   <li>{@value GrantCommonNames#AUTHORIZATION_CODE}
+     *   <li>{@value GrantCommonNames#DEVICE_CODE}
      *   <li>{@value GrantCommonNames#TOKEN_EXCHANGE}
      * </ul>
      *
@@ -342,6 +343,35 @@ public final class OAuth2Properties {
      */
     public static final String PKCE_TRANSFORMATION =
         AuthorizationCode.PREFIX + "pkce.transformation";
+  }
+
+  /**
+   * Configuration properties for the <a href="https://datatracker.ietf.org/doc/html/rfc8628">Device
+   * Authorization Grant</a> flow.
+   *
+   * <p>This flow is used to obtain an access token for devices that do not have a browser or
+   * limited input capabilities. The user is prompted to visit a URL on another device and enter a
+   * code to authorize the device.
+   */
+  public static final class DeviceCode {
+
+    public static final String PREFIX = OAuth2Properties.PREFIX + "device-code.";
+
+    /**
+     * URL of the OAuth2 device authorization endpoint. For Keycloak, this is typically {@code
+     * http://<keycloak-server>/realms/<realm-name>/protocol/openid-connect/auth/device}.
+     *
+     * <p>If using the "Device Code" grant type, either this property or {@link Basic#ISSUER_URL}
+     * must be set.
+     */
+    public static final String ENDPOINT = DeviceCode.PREFIX + "endpoint";
+
+    /**
+     * Defines how often the agent should poll the OAuth2 server for the device code flow to
+     * complete. This is only used if the grant type to use is {@value
+     * GrantCommonNames#DEVICE_CODE}. Optional, defaults to 5 seconds.
+     */
+    public static final String POLL_INTERVAL = DeviceCode.PREFIX + "poll-interval";
   }
 
   /**

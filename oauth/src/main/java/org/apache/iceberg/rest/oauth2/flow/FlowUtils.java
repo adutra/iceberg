@@ -98,6 +98,7 @@ public final class FlowUtils {
    * Returns a message prefix for log messages and console output.
    *
    * @see AuthorizationCodeFlow#msgPrefix()
+   * @see DeviceCodeFlow#msgPrefix()
    */
   public static String msgPrefix(String agentName) {
     return '[' + agentName + "] ";

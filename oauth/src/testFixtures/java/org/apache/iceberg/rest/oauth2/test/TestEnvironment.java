@@ -48,6 +48,7 @@ import org.apache.iceberg.rest.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.oauth2.config.AuthorizationCodeConfig;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.oauth2.config.ConfigUtils;
+import org.apache.iceberg.rest.oauth2.config.DeviceCodeConfig;
 import org.apache.iceberg.rest.oauth2.config.Dialect;
 import org.apache.iceberg.rest.oauth2.config.PkceTransformation;
 import org.apache.iceberg.rest.oauth2.config.ResourceOwnerPasswordConfig;
@@ -63,6 +64,7 @@ import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableAuthorizationCodeExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableClientCredentialsExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableConfigEndpointExpectation;
+import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableDeviceCodeExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableErrorExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableIcebergClientCredentialsExpectation;
 import org.apache.iceberg.rest.oauth2.test.expectation.ImmutableIcebergRefreshTokenExpectation;
@@ -132,6 +134,11 @@ public abstract class TestEnvironment implements AutoCloseable {
   public boolean returnRefreshTokens() {
     // Iceberg REST dialect does not send refresh tokens
     return dialect() != Dialect.ICEBERG_REST;
+  }
+
+  @Value.Default
+  public boolean includeDeviceAuthEndpointInDiscoveryMetadata() {
+    return true;
   }
 
   @Value.Default
@@ -232,6 +239,16 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   @Value.Default
+  public URI deviceAuthorizationEndpoint() {
+    return authorizationServerUrl().resolve("protocol/openid-connect/device-auth");
+  }
+
+  @Value.Default
+  public URI deviceVerificationEndpoint() {
+    return authorizationServerUrl().resolve("device");
+  }
+
+  @Value.Default
   public URI discoveryEndpoint() {
     return authorizationServerUrl().resolve(wellKnownPath());
   }
@@ -260,6 +277,7 @@ public abstract class TestEnvironment implements AutoCloseable {
         .basicConfig(basicConfig())
         .resourceOwnerPasswordConfig(resourceOwnerConfig())
         .authorizationCodeConfig(authorizationCodeConfig())
+        .deviceCodeConfig(deviceCodeConfig())
         .tokenRefreshConfig(tokenRefreshConfig())
         .tokenExchangeConfig(tokenExchangeConfig())
         .runtimeConfig(runtimeConfig())
@@ -377,6 +395,20 @@ public abstract class TestEnvironment implements AutoCloseable {
   @Value.Default
   public PkceTransformation pkceTransformation() {
     return PkceTransformation.S256;
+  }
+
+  @Value.Default
+  public DeviceCodeConfig deviceCodeConfig() {
+    DeviceCodeConfig.Builder builder =
+        DeviceCodeConfig.builder()
+            .ignoreServerPollInterval(true)
+            .minPollInterval(Duration.ofMillis(10))
+            .pollInterval(Duration.ofMillis(10));
+    if (!discoveryEnabled()) {
+      builder.deviceAuthorizationEndpoint(deviceAuthorizationEndpoint());
+    }
+
+    return builder.build();
   }
 
   @Value.Default
@@ -648,6 +680,7 @@ public abstract class TestEnvironment implements AutoCloseable {
 
     ImmutablePasswordExpectation.of(this).create();
     ImmutableAuthorizationCodeExpectation.of(this).create();
+    ImmutableDeviceCodeExpectation.of(this).create();
     ImmutableTokenExchangeExpectation.of(this).create();
 
     if (dialect() == Dialect.STANDARD) {
