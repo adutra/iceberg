@@ -40,6 +40,7 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.auth.oauth2.config.validator.ConfigValidator;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
+import org.apache.iceberg.rest.auth.oauth2.test.TestConstants;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -173,5 +174,105 @@ class TestBasicConfig {
                 .timeout(Duration.ofMinutes(1))
                 .build(),
             null));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void testMerge(BasicConfig base, Map<String, String> properties, BasicConfig expected) {
+    BasicConfig merged = base.merge(properties);
+    assertThat(merged).isEqualTo(expected);
+  }
+
+  static Stream<Arguments> testMerge() {
+    return Stream.of(emptyProperties(), nonEmptyProperties(), nonEmptyProperties(), baseCleared());
+  }
+
+  private static Arguments emptyProperties() {
+    BasicConfig base =
+        BasicConfig.builder()
+            .grantType(GrantType.CLIENT_CREDENTIALS)
+            .clientId("Client1")
+            .clientSecret("secret1")
+            .issuerUrl(URI.create("https://example1.com"))
+            .tokenEndpoint(URI.create("https://example1.com/token"))
+            .scopes(List.of(TestConstants.SCOPE1))
+            .extraRequestParameters(Map.of("extra1", "value1"))
+            .build();
+    return Arguments.of(base, Map.of(), base);
+  }
+
+  private static Arguments nonEmptyProperties() {
+    BasicConfig base =
+        BasicConfig.builder()
+            .grantType(GrantType.CLIENT_CREDENTIALS)
+            .clientId("Client1")
+            .clientSecret("secret1")
+            .issuerUrl(URI.create("https://example1.com"))
+            .tokenEndpoint(URI.create("https://example1.com/token"))
+            .scopes(List.of(TestConstants.SCOPE1))
+            .extraRequestParameters(Map.of("extra1", "value1", "extra2", "value2"))
+            .build();
+    Map<String, String> properties =
+        Map.of(
+            GRANT_TYPE,
+            GrantType.CLIENT_CREDENTIALS.name(),
+            CLIENT_ID,
+            "Client2",
+            CLIENT_SECRET,
+            "secret2",
+            ISSUER_URL,
+            "https://example2.com",
+            TOKEN_ENDPOINT,
+            "https://example2.com/token",
+            SCOPE,
+            TestConstants.SCOPE2,
+            EXTRA_PARAMS_PREFIX + "extra2",
+            "value2",
+            EXTRA_PARAMS_PREFIX + "extra3",
+            "value3");
+    BasicConfig expected =
+        BasicConfig.builder()
+            .grantType(GrantType.CLIENT_CREDENTIALS)
+            .clientId("Client2")
+            .clientSecret("secret2")
+            .issuerUrl(URI.create("https://example2.com"))
+            .tokenEndpoint(URI.create("https://example2.com/token"))
+            .scopes(List.of(TestConstants.SCOPE2))
+            .extraRequestParameters(
+                Map.of("extra1", "value1", "extra2", "value2", "extra3", "value3"))
+            .build();
+    return Arguments.of(base, properties, expected);
+  }
+
+  private static Arguments baseCleared() {
+    BasicConfig base =
+        BasicConfig.builder()
+            .grantType(GrantType.CLIENT_CREDENTIALS)
+            .clientId("Client1")
+            .clientSecret("secret1")
+            .issuerUrl(URI.create("https://example1.com"))
+            .tokenEndpoint(URI.create("https://example1.com/token"))
+            .scopes(List.of(TestConstants.SCOPE1))
+            .extraRequestParameters(Map.of("extra1", "value1", "extra2", "value2"))
+            .build();
+    Map<String, String> properties =
+        Map.of(
+            ISSUER_URL,
+            "",
+            SCOPE,
+            "",
+            EXTRA_PARAMS_PREFIX + "extra2",
+            "",
+            EXTRA_PARAMS_PREFIX + "extra3",
+            "");
+    BasicConfig expected =
+        BasicConfig.builder()
+            .grantType(GrantType.CLIENT_CREDENTIALS)
+            .clientId("Client1")
+            .clientSecret("secret1")
+            .tokenEndpoint(URI.create("https://example1.com/token"))
+            .extraRequestParameters(Map.of("extra1", "value1"))
+            .build();
+    return Arguments.of(base, properties, expected);
   }
 }

@@ -29,14 +29,23 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
+import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.IcebergCoreHooks;
+import org.apache.iceberg.rest.RESTCatalog;
+import org.apache.iceberg.rest.ResourcePaths;
+import org.apache.iceberg.rest.auth.AuthProperties;
 import org.apache.iceberg.rest.auth.AuthSession;
+import org.apache.iceberg.rest.auth.oauth2.OAuth2Manager;
+import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2Agent;
 import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.auth.oauth2.config.ConfigUtils;
 import org.apache.iceberg.rest.auth.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.TokenRefreshConfig;
 import org.apache.iceberg.rest.auth.oauth2.endpoint.EndpointProvider;
@@ -46,7 +55,9 @@ import org.apache.iceberg.rest.auth.oauth2.flow.FlowUtils;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableClientCredentialsExpectation;
+import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableConfigEndpointExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableErrorExpectation;
+import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableLoadTableEndpointExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableMetadataDiscoveryExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableRefreshTokenExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.server.HttpServer;
@@ -110,7 +121,13 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Value.Default
   public HTTPClient httpClient() {
-    return HTTPClient.builder(Map.of()).withAuthSession(AuthSession.EMPTY).build();
+    return newHttpClientBuilder(Map.of()).build();
+  }
+
+  public HTTPClient.Builder newHttpClientBuilder(Map<String, String> properties) {
+    return HTTPClient.builder(properties)
+        .uri(catalogServerUrl())
+        .withAuthSession(AuthSession.EMPTY);
   }
 
   @Value.Default
@@ -163,8 +180,18 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   @Value.Default
+  public String catalogServerContextPath() {
+    return "/api/catalog/";
+  }
+
+  @Value.Default
   public URI authorizationServerUrl() {
     return serverRootUrl().resolve(authorizationServerContextPath());
+  }
+
+  @Value.Default
+  public URI catalogServerUrl() {
+    return serverRootUrl().resolve(catalogServerContextPath());
   }
 
   @Value.Default
@@ -180,6 +207,19 @@ public abstract class TestEnvironment implements AutoCloseable {
   @Value.Default
   public String wellKnownPath() {
     return EndpointProvider.WELL_KNOWN_PATHS.get(0);
+  }
+
+  @Value.Default
+  public URI configEndpoint() {
+    return catalogServerUrl().resolve(ResourcePaths.config());
+  }
+
+  @Value.Default
+  public URI loadTableEndpoint() {
+    return catalogServerUrl()
+        .resolve(
+            ResourcePaths.forCatalogProperties(catalogProperties())
+                .table(TestConstants.TABLE_IDENTIFIER));
   }
 
   @Value.Default
@@ -281,6 +321,45 @@ public abstract class TestEnvironment implements AutoCloseable {
     return System.out;
   }
 
+  @Value.Default
+  public Map<String, String> catalogProperties() {
+    return ImmutableMap.<String, String>builder()
+        .put(CatalogProperties.URI, catalogServerUrl().toString())
+        .put("prefix", TestConstants.WAREHOUSE)
+        .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+        .put(AuthProperties.AUTH_TYPE, OAuth2Manager.class.getName())
+        .put(OAuth2Properties.Basic.GRANT_TYPE, grantType().toString())
+        .put(OAuth2Properties.Basic.ISSUER_URL, authorizationServerUrl().toString())
+        .put(OAuth2Properties.Basic.CLIENT_ID, clientId())
+        .put(OAuth2Properties.Basic.CLIENT_SECRET, clientSecret())
+        .put(
+            OAuth2Properties.Basic.SCOPE,
+            ConfigUtils.scopesAsString(scopes()).orElse(TestConstants.SCOPE1))
+        .put(OAuth2Properties.Basic.EXTRA_PARAMS_PREFIX + "extra1", "value1")
+        .put(OAuth2Properties.Runtime.AGENT_NAME, agentName())
+        .build();
+  }
+
+  @Value.Default
+  public SessionCatalog.SessionContext sessionContext() {
+    return SessionCatalog.SessionContext.createEmpty();
+  }
+
+  @Value.Default
+  public Map<String, String> tableProperties() {
+    return Map.of();
+  }
+
+  public RESTCatalog createCatalog(boolean initialize) {
+    RESTCatalog catalog =
+        new RESTCatalog(sessionContext(), config -> newHttpClientBuilder(config).build());
+    if (initialize) {
+      catalog.initialize("catalog-" + FlowUtils.randomAlphaNumString(4), catalogProperties());
+    }
+
+    return catalog;
+  }
+
   public FlowFactory createFlowFactory() {
     return FlowFactory.of(agentSpec(), executor(), this::httpClient);
   }
@@ -294,11 +373,17 @@ public abstract class TestEnvironment implements AutoCloseable {
     ImmutableClientCredentialsExpectation.of(this).create();
     ImmutableRefreshTokenExpectation.of(this).create();
     createMetadataDiscoveryExpectations();
+    createCatalogExpectations();
     createErrorExpectations();
   }
 
   public void createMetadataDiscoveryExpectations() {
     ImmutableMetadataDiscoveryExpectation.of(this).create();
+  }
+
+  public void createCatalogExpectations() {
+    ImmutableConfigEndpointExpectation.of(this).create();
+    ImmutableLoadTableEndpointExpectation.of(this).create();
   }
 
   public void createErrorExpectations() {

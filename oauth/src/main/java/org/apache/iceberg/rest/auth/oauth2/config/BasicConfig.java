@@ -221,6 +221,23 @@ public interface BasicConfig {
         minTimeout());
   }
 
+  /** Merges the given properties into this {@link BasicConfig} and returns the result. */
+  default BasicConfig merge(Map<String, String> properties) {
+    Preconditions.checkNotNull(properties, "Invalid properties map: null");
+    Builder builder = builder();
+    builder.clientIdOption().set(properties, clientId());
+    builder.clientAuthenticationOption().set(properties, clientAuthentication());
+    builder.clientSecretOption().set(properties, clientSecret());
+    builder.issuerUrlOption().set(properties, issuerUrl());
+    builder.tokenEndpointOption().set(properties, tokenEndpoint());
+    builder.grantTypeOption().set(properties, grantType());
+    builder.scopesOption().set(properties, scopes());
+    builder.extraRequestParametersOption().set(properties, extraRequestParameters());
+    builder.timeoutOption().set(properties, timeout());
+    builder.minTimeout(minTimeout());
+    return builder.build();
+  }
+
   static Builder builder() {
     return ImmutableBasicConfig.builder();
   }

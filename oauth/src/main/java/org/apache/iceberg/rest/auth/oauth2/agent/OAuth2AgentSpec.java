@@ -50,6 +50,16 @@ public interface OAuth2AgentSpec {
     return RuntimeConfig.DEFAULT;
   }
 
+  /** Merges the given properties into this {@link OAuth2AgentSpec} and returns the result. */
+  default OAuth2AgentSpec merge(Map<String, String> properties) {
+    Preconditions.checkNotNull(properties, "Invalid properties map: null");
+    return builder()
+        .basicConfig(basicConfig().merge(properties))
+        .tokenRefreshConfig(tokenRefreshConfig().merge(properties))
+        .runtimeConfig(runtimeConfig().merge(properties))
+        .build();
+  }
+
   static Builder builder() {
     return ImmutableOAuth2AgentSpec.builder();
   }

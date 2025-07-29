@@ -75,4 +75,47 @@ class TestRuntimeConfig {
             RuntimeConfig.builder().agentName("my-agent").build(),
             null));
   }
+
+  @ParameterizedTest
+  @MethodSource
+  void testMerge(RuntimeConfig base, Map<String, String> properties, RuntimeConfig expected) {
+    RuntimeConfig merged = base.merge(properties);
+    assertThat(merged)
+        .usingRecursiveComparison()
+        .ignoringFields("clock", "console")
+        .isEqualTo(expected);
+  }
+
+  static Stream<Arguments> testMerge() {
+    return Stream.of(
+        emptyBase(), emptyProperties(), nonEmptyBaseNonEmptyProperties(), baseCleared());
+  }
+
+  private static Arguments emptyBase() {
+    return Arguments.of(
+        RuntimeConfig.builder().build(),
+        Map.of(AGENT_NAME, "my-agent"),
+        RuntimeConfig.builder().agentName("my-agent").build());
+  }
+
+  private static Arguments emptyProperties() {
+    return Arguments.of(
+        RuntimeConfig.builder().agentName("my-agent").build(),
+        Map.of(),
+        RuntimeConfig.builder().agentName("my-agent").build());
+  }
+
+  private static Arguments nonEmptyBaseNonEmptyProperties() {
+    return Arguments.of(
+        RuntimeConfig.builder().agentName("my-agent2").build(),
+        Map.of(AGENT_NAME, "my-agent2"),
+        RuntimeConfig.builder().agentName("my-agent2").build());
+  }
+
+  private static Arguments baseCleared() {
+    return Arguments.of(
+        RuntimeConfig.builder().agentName("my-agent2").build(),
+        Map.of(AGENT_NAME, ""),
+        RuntimeConfig.DEFAULT);
+  }
 }

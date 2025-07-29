@@ -72,6 +72,10 @@ public abstract class FlowFactory implements AutoCloseable {
   @Override
   public void close() {}
 
+  public FlowFactory copy() {
+    return ImmutableFlowFactory.builder().from(this).build();
+  }
+
   protected abstract OAuth2AgentSpec spec();
 
   protected abstract ScheduledExecutorService executor();

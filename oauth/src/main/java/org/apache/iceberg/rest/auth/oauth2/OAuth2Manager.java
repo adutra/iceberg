@@ -1,0 +1,189 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iceberg.rest.auth.oauth2;
+
+import java.time.Duration;
+import java.util.Map;
+import java.util.Optional;
+import org.apache.iceberg.catalog.SessionCatalog.SessionContext;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.IcebergCoreHooks;
+import org.apache.iceberg.rest.RESTClient;
+import org.apache.iceberg.rest.RESTUtil;
+import org.apache.iceberg.rest.auth.AuthSession;
+import org.apache.iceberg.rest.auth.RefreshingAuthManager;
+import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2AgentSpec;
+import org.apache.iceberg.rest.auth.oauth2.cache.AuthSessionCache;
+import org.apache.iceberg.rest.auth.oauth2.cache.AuthSessionCacheFactory;
+import org.apache.iceberg.rest.auth.oauth2.compat.LegacyPropertiesMigrator;
+import org.apache.iceberg.rest.auth.oauth2.compat.PropertiesSanitizer;
+import org.apache.iceberg.util.PropertyUtil;
+
+public class OAuth2Manager extends RefreshingAuthManager {
+
+  static {
+    IcebergCoreHooks.installOAuth2Serializers();
+  }
+
+  private static final String DEFAULT_SESSION_CACHE_TIMEOUT = "PT1H";
+
+  private final String name;
+  private final AuthSessionCacheFactory<OAuth2AgentSpec, OAuth2Session> sessionCacheFactory;
+
+  private final LegacyPropertiesMigrator legacyPropertiesMigrator = new LegacyPropertiesMigrator();
+  private final PropertiesSanitizer propertiesSanitizer = new PropertiesSanitizer();
+
+  private OAuth2Session initSession;
+  private RESTClient client;
+  private AuthSessionCache<OAuth2AgentSpec, OAuth2Session> sessionCache;
+  private boolean migrateLegacyProperties;
+
+  public OAuth2Manager(String managerName) {
+    this(managerName, OAuth2Manager::createSessionCache);
+  }
+
+  public OAuth2Manager(
+      String managerName,
+      AuthSessionCacheFactory<OAuth2AgentSpec, OAuth2Session> sessionCacheFactory) {
+    super(managerName + "-token-refresh");
+    this.name = managerName;
+    this.sessionCacheFactory = sessionCacheFactory;
+  }
+
+  @Override
+  public AuthSession initSession(RESTClient initClient, Map<String, String> initProperties) {
+    client = initClient.withAuthSession(AuthSession.EMPTY);
+    migrateLegacyProperties =
+        PropertyUtil.propertyAsBoolean(
+            initProperties, OAuth2Properties.Manager.MIGRATE_LEGACY_PROPERTIES, false);
+    Map<String, String> migrated =
+        migrateLegacyProperties ? legacyPropertiesMigrator.migrate(initProperties) : initProperties;
+    OAuth2AgentSpec initSpec = OAuth2AgentSpec.builder().from(migrated).build();
+    initSession = new OAuth2Session(initSpec, refreshExecutor(), this::getRestClient);
+    return initSession;
+  }
+
+  @Override
+  public AuthSession catalogSession(
+      RESTClient sharedClient, Map<String, String> catalogProperties) {
+    client = sharedClient.withAuthSession(AuthSession.EMPTY);
+    migrateLegacyProperties =
+        PropertyUtil.propertyAsBoolean(
+            catalogProperties, OAuth2Properties.Manager.MIGRATE_LEGACY_PROPERTIES, false);
+    Map<String, String> migrated =
+        migrateLegacyProperties
+            ? legacyPropertiesMigrator.migrate(catalogProperties)
+            : catalogProperties;
+    OAuth2AgentSpec catalogSpec = OAuth2AgentSpec.builder().from(migrated).build();
+    sessionCache = sessionCacheFactory.apply(name, migrated);
+    OAuth2Session catalogSession;
+    if (initSession != null && catalogSpec.equals(initSession.spec())) {
+      // Copy the existing session if the properties are the same as the init session
+      // to avoid requiring from users to log in again, for human-based flows.
+      catalogSession = initSession.copy();
+    } else {
+      catalogSession = new OAuth2Session(catalogSpec, refreshExecutor(), this::getRestClient);
+    }
+
+    initSession = null;
+    return catalogSession;
+  }
+
+  @Override
+  public AuthSession contextualSession(SessionContext context, AuthSession parent) {
+    Map<String, String> contextProperties =
+        RESTUtil.merge(
+            Optional.ofNullable(context.properties()).orElseGet(Map::of),
+            Optional.ofNullable(context.credentials()).orElseGet(Map::of));
+    Map<String, String> migrated =
+        migrateLegacyProperties
+            ? legacyPropertiesMigrator.migrate(contextProperties)
+            : contextProperties;
+    Map<String, String> sanitized = propertiesSanitizer.sanitizeContextProperties(migrated);
+    return maybeCacheSession(parent, sanitized);
+  }
+
+  @Override
+  public AuthSession tableSession(
+      TableIdentifier table, Map<String, String> properties, AuthSession parent) {
+    Map<String, String> migrated =
+        migrateLegacyProperties ? legacyPropertiesMigrator.migrate(properties) : properties;
+    Map<String, String> sanitized = propertiesSanitizer.sanitizeTableProperties(migrated);
+    return maybeCacheSession(parent, sanitized);
+  }
+
+  @Override
+  public AuthSession tableSession(RESTClient sharedClient, Map<String, String> properties) {
+    Map<String, String> migrated =
+        migrateLegacyProperties ? legacyPropertiesMigrator.migrate(properties) : properties;
+    // Important: this method is invoked from standalone components (FileIO components), and NOT by
+    // the REST catalog.
+    // For this reason, we must not assume that the client and session cache have been initialized
+    // already, because neither initSession() nor catalogSession() are called in this case.
+    // For the same reason, we do NOT sanitize the passed properties, as they are implicitly trusted
+    // and may contain credentials coming from the catalog properties.
+    OAuth2AgentSpec spec = OAuth2AgentSpec.builder().from(migrated).build();
+    if (sessionCache == null) {
+      sessionCache = sessionCacheFactory.apply(name, migrated);
+    }
+
+    if (client == null) {
+      client = sharedClient.withAuthSession(AuthSession.EMPTY);
+    }
+
+    return sessionCache.cachedSession(
+        spec, k -> new OAuth2Session(spec, refreshExecutor(), this::getRestClient));
+  }
+
+  private AuthSession maybeCacheSession(AuthSession parent, Map<String, String> tableProperties) {
+    OAuth2AgentSpec parentSpec = ((OAuth2Session) parent).spec();
+    OAuth2AgentSpec childSpec = parentSpec.merge(tableProperties);
+    return childSpec.equals(parentSpec)
+        ? parent
+        : sessionCache.cachedSession(
+            childSpec, k -> new OAuth2Session(childSpec, refreshExecutor(), this::getRestClient));
+  }
+
+  @Override
+  public void close() {
+    AuthSession session = initSession;
+    AuthSessionCache<OAuth2AgentSpec, OAuth2Session> cache = sessionCache;
+    try (session;
+        cache) {
+      super.close();
+    } finally {
+      this.initSession = null;
+      this.sessionCache = null;
+      this.client = null;
+    }
+  }
+
+  private RESTClient getRestClient() {
+    return client;
+  }
+
+  private static AuthSessionCache<OAuth2AgentSpec, OAuth2Session> createSessionCache(
+      String name, Map<String, String> properties) {
+    return new AuthSessionCache<>(
+        name,
+        Duration.parse(
+            properties.getOrDefault(
+                OAuth2Properties.Manager.SESSION_CACHE_TIMEOUT, DEFAULT_SESSION_CACHE_TIMEOUT)));
+  }
+}

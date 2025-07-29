@@ -22,20 +22,32 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.Map;
+import java.util.UUID;
+import org.apache.iceberg.catalog.SessionCatalog;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties;
 
 public final class TestConstants {
 
   private TestConstants() {}
 
   public static final String CLIENT_ID1 = "Client1";
+  public static final String CLIENT_ID2 = "Client2";
 
   public static final String CLIENT_SECRET1 = "s3cr3t";
+  public static final String CLIENT_SECRET2 = "sEcrEt";
 
   public static final String SCOPE1 = "catalog";
+  public static final String SCOPE2 = "session";
+  public static final String SCOPE3 = "table";
 
   public static final String CLIENT_CREDENTIALS1_BASE_64 =
       Base64.getEncoder()
           .encodeToString((CLIENT_ID1 + ":" + CLIENT_SECRET1).getBytes(StandardCharsets.UTF_8));
+  public static final String CLIENT_CREDENTIALS2_BASE_64 =
+      Base64.getEncoder()
+          .encodeToString((CLIENT_ID2 + ":" + CLIENT_SECRET2).getBytes(StandardCharsets.UTF_8));
 
   public static final Instant NOW = Instant.parse("2025-01-01T00:00:00Z");
 
@@ -50,4 +62,18 @@ public final class TestConstants {
       NOW.plusSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS);
   public static final Duration REFRESH_TOKEN_LIFESPAN =
       Duration.ofSeconds(REFRESH_TOKEN_EXPIRES_IN_SECONDS);
+
+  public static final String WAREHOUSE = "warehouse1";
+  public static final TableIdentifier TABLE_IDENTIFIER = TableIdentifier.of("namespace1", "table1");
+
+  public static final SessionCatalog.SessionContext SESSION_CONTEXT =
+      new SessionCatalog.SessionContext(
+          UUID.randomUUID().toString(),
+          "user",
+          Map.of(
+              OAuth2Properties.Basic.CLIENT_ID,
+              TestConstants.CLIENT_ID2,
+              OAuth2Properties.Basic.CLIENT_SECRET,
+              TestConstants.CLIENT_SECRET2),
+          Map.of(OAuth2Properties.Basic.SCOPE, TestConstants.SCOPE2));
 }

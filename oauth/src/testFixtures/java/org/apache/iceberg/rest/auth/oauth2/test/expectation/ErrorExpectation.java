@@ -38,6 +38,14 @@ public abstract class ErrorExpectation extends AbstractExpectation {
               JsonBody.json(
                   "{\"error\":\"invalid_request\",\"error_description\":\"Invalid request\"}"));
 
+  public static final HttpResponse CATALOG_SERVER_ERROR_RESPONSE =
+      HttpResponse.response()
+          .withStatusCode(401)
+          .withContentType(MediaType.APPLICATION_JSON)
+          .withBody(
+              JsonBody.json(
+                  "{\"error\":{\"code\":401,\"type\":\"invalid_request\",\"message\":\"Invalid request\"}}"));
+
   @Override
   public void create() {
     clientAndServer()
@@ -45,5 +53,8 @@ public abstract class ErrorExpectation extends AbstractExpectation {
             HttpRequest.request()
                 .withPath(testEnvironment().authorizationServerContextPath() + ".*"))
         .respond(AUTHORIZATION_SERVER_ERROR_RESPONSE);
+    clientAndServer()
+        .when(HttpRequest.request().withPath(testEnvironment().catalogServerContextPath() + ".*"))
+        .respond(CATALOG_SERVER_ERROR_RESPONSE);
   }
 }

@@ -1111,6 +1111,7 @@ project(':iceberg-rest-oauth') {
 
     implementation libs.httpcomponents.httpclient5
     implementation libs.auth0.jwt
+    implementation libs.caffeine
     implementation libs.slf4j.api
 
     compileOnly libs.errorprone.annotations

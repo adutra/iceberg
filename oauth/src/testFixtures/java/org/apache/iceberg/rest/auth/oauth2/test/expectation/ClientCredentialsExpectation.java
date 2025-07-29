@@ -31,8 +31,8 @@ public abstract class ClientCredentialsExpectation extends InitialTokenFetchExpe
   @Override
   protected PostFormRequest tokenRequestBody() {
     return ImmutableClientCredentialsTokenRequest.builder()
-        .scope(TestConstants.SCOPE1)
-        .putExtraParameter("extra1", "value1")
+        .scope(String.format("(%s|%s)", TestConstants.SCOPE1, TestConstants.SCOPE2))
+        .putExtraParameter("(extra1|extra2)", "(value1|value2)")
         .build();
   }
 }

@@ -199,4 +199,38 @@ public final class OAuth2Properties {
      */
     public static final String AGENT_NAME = Runtime.PREFIX + "agent-name";
   }
+
+  /**
+   * Configuration properties for the OAuth2 manager.
+   *
+   * <p>These properties are used to configure the OAuth2 manager, such as the session cache
+   * timeout, and whether to migrate legacy Iceberg OAuth2 properties.
+   */
+  public static final class Manager {
+
+    public static final String PREFIX = OAuth2Properties.PREFIX + "manager.";
+
+    /**
+     * The session cache timeout. Cached sessions will become eligible for eviction after this
+     * duration of inactivity. Defaults to 1 hour. Must be a valid <a
+     * href="https://en.wikipedia.org/wiki/ISO_8601#Durations">ISO-8601 duration</a>.
+     *
+     * <p>This value is used for housekeeping; it does not mean that cached sessions will stop
+     * working after this time, but that the session cache will evict the session after this time of
+     * inactivity. If the context is used again, a new session will be created and cached.
+     */
+    public static final String SESSION_CACHE_TIMEOUT = Manager.PREFIX + "session-cache-timeout";
+
+    /**
+     * Whether to migrate Iceberg OAuth2 legacy properties. Defaults to {@code false}.
+     *
+     * <p>When enabled, the manager will automatically migrate legacy Iceberg OAuth2 properties to
+     * their new equivalents; e.g. it would map {@code oauth2-server-uri} to {@value
+     * Basic#TOKEN_ENDPOINT}.
+     *
+     * <p>When disabled, legacy properties are ignored.
+     */
+    public static final String MIGRATE_LEGACY_PROPERTIES =
+        Manager.PREFIX + "migrate-legacy-properties";
+  }
 }

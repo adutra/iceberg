@@ -1,0 +1,290 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iceberg.rest.auth.oauth2.compat;
+
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.Basic;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.TokenRefresh;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.InstanceOfAssertFactories.array;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
+import org.apache.iceberg.relocated.com.google.common.collect.Lists;
+import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.util.Pair;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+class TestLegacyPropertiesMigrator {
+
+  private List<Pair<String, String[]>> messages;
+  private BiConsumer<String, String[]> consumer;
+
+  @BeforeEach
+  void before() {
+    messages = Lists.newArrayList();
+    consumer = (msg, args) -> messages.add(Pair.of(msg, args));
+  }
+
+  @AfterEach
+  void after() {
+    messages.clear();
+  }
+
+  @Test
+  void emptyMap() {
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(Map.of());
+    assertThat(actual).isEmpty();
+    assertThat(messages).isEmpty();
+  }
+
+  @Test
+  void noLegacyProperties() {
+    Map<String, String> input =
+        Map.of(
+            Basic.CLIENT_ID,
+            "client1",
+            Basic.CLIENT_SECRET,
+            "secret",
+            "non.oauth2.property",
+            "value");
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+    // Only OAuth2 properties should be included
+    assertThat(actual)
+        .containsExactlyInAnyOrderEntriesOf(
+            Map.of(
+                Basic.CLIENT_ID, "client1",
+                Basic.CLIENT_SECRET, "secret"));
+    assertThat(messages).isEmpty();
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void credential(String credentialValue, Map<String, String> expected) {
+    Map<String, String> input = Map.of(OAuth2Properties.CREDENTIAL, credentialValue);
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+    assertThat(actual).containsExactlyInAnyOrderEntriesOf(expected);
+    assertThat(messages).hasSize(1);
+    Pair<String, String[]> message = messages.get(0);
+    assertThat(message)
+        .extracting(Pair::first)
+        .isEqualTo("Detected legacy property '{}', please use options {} {} {} instead.");
+    assertThat(message)
+        .extracting(Pair::second)
+        .asInstanceOf(array(String[].class))
+        .containsExactly(OAuth2Properties.CREDENTIAL, Basic.CLIENT_ID, "and", Basic.CLIENT_SECRET);
+  }
+
+  static Stream<Arguments> credential() {
+    return Stream.of(
+        Arguments.of(
+            "client1:secret1",
+            Map.of(
+                Basic.CLIENT_ID, "client1",
+                Basic.CLIENT_SECRET, "secret1")),
+        Arguments.of("secret-only", Map.of(Basic.CLIENT_SECRET, "secret-only")));
+  }
+
+  @Test
+  void credentialInvalid() {
+    Map<String, String> input = Map.of(OAuth2Properties.CREDENTIAL, "client:secret:extra:parts");
+    assertThatIllegalArgumentException()
+        .isThrownBy(() -> new LegacyPropertiesMigrator(consumer).migrate(input))
+        .withMessage("Invalid credential: client:secret:extra:parts");
+  }
+
+  @Test
+  void tokenExpiresInMs() {
+    Map<String, String> input = Map.of(OAuth2Properties.TOKEN_EXPIRES_IN_MS, "300000");
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+    assertThat(actual)
+        .isEqualTo(
+            Map.of(TokenRefresh.ACCESS_TOKEN_LIFESPAN, Duration.ofMillis(300000).toString()));
+    assertThat(messages).hasSize(1);
+    Pair<String, String[]> message = messages.get(0);
+    assertThat(message)
+        .extracting(Pair::first)
+        .isEqualTo("Detected legacy property '{}', please use option {} instead.");
+    assertThat(message)
+        .extracting(Pair::second)
+        .asInstanceOf(array(String[].class))
+        .containsExactly(OAuth2Properties.TOKEN_EXPIRES_IN_MS, TokenRefresh.ACCESS_TOKEN_LIFESPAN);
+  }
+
+  @Test
+  void tokenRefreshEnabled() {
+    Map<String, String> input = Map.of(OAuth2Properties.TOKEN_REFRESH_ENABLED, "true");
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+    assertThat(actual).isEqualTo(Map.of(TokenRefresh.ENABLED, "true"));
+    assertThat(messages).hasSize(1);
+    assertThat(messages).hasSize(1);
+    Pair<String, String[]> message = messages.get(0);
+    assertThat(message)
+        .extracting(Pair::first)
+        .isEqualTo("Detected legacy property '{}', please use option {} instead.");
+    assertThat(message)
+        .extracting(Pair::second)
+        .asInstanceOf(array(String[].class))
+        .containsExactly(OAuth2Properties.TOKEN_REFRESH_ENABLED, TokenRefresh.ENABLED);
+  }
+
+  @Test
+  void oAuth2ServerUri() {
+    Map<String, String> input =
+        Map.of(OAuth2Properties.OAUTH2_SERVER_URI, "https://example.com/token");
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+    assertThat(actual).isEqualTo(Map.of(Basic.TOKEN_ENDPOINT, "https://example.com/token"));
+    assertThat(messages).hasSize(1);
+    Pair<String, String[]> message = messages.get(0);
+    assertThat(message)
+        .extracting(Pair::first)
+        .isEqualTo("Detected legacy property '{}', please use options {} {} {} instead.");
+    assertThat(message)
+        .extracting(Pair::second)
+        .asInstanceOf(array(String[].class))
+        .containsExactly(
+            OAuth2Properties.OAUTH2_SERVER_URI, Basic.ISSUER_URL, "or", Basic.TOKEN_ENDPOINT);
+  }
+
+  @Test
+  void scope() {
+    Map<String, String> input = Map.of(OAuth2Properties.SCOPE, "read write admin");
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+    assertThat(actual).isEqualTo(Map.of(Basic.SCOPE, "read write admin"));
+    assertThat(messages).hasSize(1);
+    Pair<String, String[]> message = messages.get(0);
+    assertThat(message)
+        .extracting(Pair::first)
+        .isEqualTo("Detected legacy property '{}', please use option {} instead.");
+    assertThat(message)
+        .extracting(Pair::second)
+        .asInstanceOf(array(String[].class))
+        .containsExactly(OAuth2Properties.SCOPE, Basic.SCOPE);
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void ignoredTokenType(String tokenTypeProperty) {
+    Map<String, String> input = Map.of(tokenTypeProperty, "some-value");
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+    assertThat(actual).isEmpty();
+    assertThat(messages).hasSize(1);
+    Pair<String, String[]> message = messages.get(0);
+    assertThat(message).extracting(Pair::first).isEqualTo("Ignoring legacy property '{}': {}.");
+    assertThat(message)
+        .extracting(Pair::second)
+        .asInstanceOf(array(String[].class))
+        .containsExactly(tokenTypeProperty, "vended token exchange is not supported");
+  }
+
+  static Stream<Arguments> ignoredTokenType() {
+    return Stream.of(
+        Arguments.of(OAuth2Properties.ACCESS_TOKEN_TYPE),
+        Arguments.of(OAuth2Properties.ID_TOKEN_TYPE),
+        Arguments.of(OAuth2Properties.SAML1_TOKEN_TYPE),
+        Arguments.of(OAuth2Properties.SAML2_TOKEN_TYPE),
+        Arguments.of(OAuth2Properties.JWT_TOKEN_TYPE));
+  }
+
+  @Test
+  void fullMigrationScenario() {
+    Map<String, String> input =
+        ImmutableMap.<String, String>builder()
+            .put(OAuth2Properties.CREDENTIAL, "client1:secret1")
+            .put(OAuth2Properties.TOKEN_EXPIRES_IN_MS, "300000")
+            .put(OAuth2Properties.TOKEN_REFRESH_ENABLED, "true")
+            .put(OAuth2Properties.OAUTH2_SERVER_URI, "https://example.com/token")
+            .put(OAuth2Properties.SCOPE, "read write")
+            .put(OAuth2Properties.ACCESS_TOKEN_TYPE, "ignored")
+            .put(Basic.ISSUER_URL, "https://example.com") // New property should be preserved
+            .put("non.oauth2.property", "ignored") // Non-OAuth2 property should be filtered out
+            .build();
+
+    Map<String, String> actual = new LegacyPropertiesMigrator(consumer).migrate(input);
+
+    Map<String, String> expected =
+        ImmutableMap.<String, String>builder()
+            .put(Basic.CLIENT_ID, "client1")
+            .put(Basic.CLIENT_SECRET, "secret1")
+            .put(TokenRefresh.ACCESS_TOKEN_LIFESPAN, Duration.ofMillis(300000).toString())
+            .put(TokenRefresh.ENABLED, "true")
+            .put(Basic.TOKEN_ENDPOINT, "https://example.com/token")
+            .put(Basic.SCOPE, "read write")
+            .put(Basic.ISSUER_URL, "https://example.com")
+            .build();
+
+    assertThat(actual).containsExactlyInAnyOrderEntriesOf(expected);
+
+    // Should have 6 log entries: 5 migration warnings + 1 ignored property warning
+    assertThat(messages).hasSize(6);
+
+    List<String> legacyProperties =
+        messages.stream()
+            .filter(msg -> msg.first().contains("Detected legacy property"))
+            .map(Pair::second)
+            .map(args -> args[0])
+            .collect(Collectors.toList());
+
+    // Verify migration warnings
+    assertThat(legacyProperties)
+        .containsExactlyInAnyOrder(
+            OAuth2Properties.CREDENTIAL,
+            OAuth2Properties.TOKEN_EXPIRES_IN_MS,
+            OAuth2Properties.TOKEN_REFRESH_ENABLED,
+            OAuth2Properties.OAUTH2_SERVER_URI,
+            OAuth2Properties.SCOPE);
+
+    List<String> ignoredProperties =
+        messages.stream()
+            .filter(msg -> msg.first().contains("Ignoring legacy property"))
+            .map(Pair::second)
+            .map(args -> args[0])
+            .collect(Collectors.toList());
+
+    // Verify ignored property warning
+    assertThat(ignoredProperties).containsOnly(OAuth2Properties.ACCESS_TOKEN_TYPE);
+  }
+
+  @Test
+  void noDuplicateWarnings() {
+    Map<String, String> input =
+        ImmutableMap.<String, String>builder()
+            .put(OAuth2Properties.CREDENTIAL, "client1:secret1")
+            .put(OAuth2Properties.TOKEN_EXPIRES_IN_MS, "300000")
+            .put(OAuth2Properties.TOKEN_REFRESH_ENABLED, "true")
+            .put(OAuth2Properties.OAUTH2_SERVER_URI, "https://example.com/token")
+            .put(OAuth2Properties.SCOPE, "read write")
+            .put(OAuth2Properties.ACCESS_TOKEN_TYPE, "ignored")
+            .build();
+    LegacyPropertiesMigrator migrator = new LegacyPropertiesMigrator(consumer);
+    migrator.migrate(input);
+    migrator.migrate(input);
+    assertThat(messages).hasSize(6);
+  }
+}

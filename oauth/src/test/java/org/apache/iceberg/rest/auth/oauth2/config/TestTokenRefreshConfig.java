@@ -106,4 +106,92 @@ class TestTokenRefreshConfig {
                 .build(),
             null));
   }
+
+  @ParameterizedTest
+  @MethodSource
+  void testMerge(
+      TokenRefreshConfig base, Map<String, String> properties, TokenRefreshConfig expected) {
+    TokenRefreshConfig merged = base.merge(properties);
+    assertThat(merged).isEqualTo(expected);
+  }
+
+  static Stream<Arguments> testMerge() {
+    return Stream.of(
+        emptyBase(), emptyProperties(), nonEmptyBaseNonEmptyProperties(), baseCleared());
+  }
+
+  private static Arguments emptyBase() {
+    TokenRefreshConfig base = TokenRefreshConfig.builder().build();
+    Map<String, String> properties =
+        Map.of(
+            ENABLED,
+            "false",
+            ACCESS_TOKEN_LIFESPAN,
+            "PT1H",
+            SAFETY_MARGIN,
+            "PT10S",
+            IDLE_TIMEOUT,
+            "PT1M");
+    TokenRefreshConfig expected =
+        TokenRefreshConfig.builder()
+            .enabled(false)
+            .accessTokenLifespan(Duration.ofHours(1))
+            .safetyMargin(Duration.ofSeconds(10))
+            .idleTimeout(Duration.ofMinutes(1))
+            .build();
+    return Arguments.of(base, properties, expected);
+  }
+
+  private static Arguments emptyProperties() {
+    TokenRefreshConfig base =
+        TokenRefreshConfig.builder()
+            .enabled(false)
+            .accessTokenLifespan(Duration.ofHours(1))
+            .safetyMargin(Duration.ofSeconds(10))
+            .idleTimeout(Duration.ofMinutes(1))
+            .build();
+    return Arguments.of(base, Map.of(), base);
+  }
+
+  private static Arguments nonEmptyBaseNonEmptyProperties() {
+    TokenRefreshConfig base =
+        TokenRefreshConfig.builder()
+            .enabled(false)
+            .accessTokenLifespan(Duration.ofHours(1))
+            .safetyMargin(Duration.ofSeconds(10))
+            .idleTimeout(Duration.ofMinutes(1))
+            .build();
+    Map<String, String> properties =
+        Map.of(
+            ENABLED,
+            "true",
+            ACCESS_TOKEN_LIFESPAN,
+            "PT2H",
+            SAFETY_MARGIN,
+            "PT20S",
+            IDLE_TIMEOUT,
+            "PT2M");
+    TokenRefreshConfig expected =
+        TokenRefreshConfig.builder()
+            .enabled(true)
+            .accessTokenLifespan(Duration.ofHours(2))
+            .safetyMargin(Duration.ofSeconds(20))
+            .idleTimeout(Duration.ofMinutes(2))
+            .build();
+    return Arguments.of(base, properties, expected);
+  }
+
+  private static Arguments baseCleared() {
+    TokenRefreshConfig base =
+        TokenRefreshConfig.builder()
+            .enabled(false)
+            .accessTokenLifespan(Duration.ofHours(1))
+            .safetyMargin(Duration.ofSeconds(10))
+            .idleTimeout(Duration.ofMinutes(1))
+            .build();
+    Map<String, String> properites =
+        Map.of(ENABLED, "", ACCESS_TOKEN_LIFESPAN, "", SAFETY_MARGIN, "", IDLE_TIMEOUT, "");
+    TokenRefreshConfig expected = TokenRefreshConfig.DEFAULT;
+    return Arguments.of(base, properites, expected);
+  }
 }
