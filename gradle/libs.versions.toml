@@ -70,6 +70,7 @@ jetty = "11.0.25"
 junit = "5.13.4"
 junit-platform = "1.13.4"
 kafka = "3.9.1"
+keycloak-admin-client = "26.0.6"
 kryo-shaded = "4.0.3"
 microprofile-openapi-api = "3.1.2"
 mockito = "4.11.0"
@@ -88,6 +89,7 @@ spark35 = "3.5.6"
 spark40 = "4.0.0"
 sqlite-jdbc = "3.50.3.0"
 testcontainers = "1.21.3"
+testcontainers-keycloak = "3.6.0"
 tez08 = { strictly = "0.8.4"}  # see rich version usage explanation above
 
 [libraries]
@@ -160,6 +162,7 @@ kafka-clients = { module = "org.apache.kafka:kafka-clients", version.ref = "kafk
 kafka-connect-api = { module = "org.apache.kafka:connect-api", version.ref = "kafka" }
 kafka-connect-json = { module = "org.apache.kafka:connect-json", version.ref = "kafka" }
 kafka-connect-transforms = { module = "org.apache.kafka:connect-transforms", version.ref = "kafka" }
+keycloak-admin-client = { module = "org.keycloak:keycloak-admin-client", version.ref = "keycloak-admin-client" }
 microprofile-openapi-api = { module = "org.eclipse.microprofile.openapi:microprofile-openapi-api", version.ref = "microprofile-openapi-api" }
 nessie-client = { module = "org.projectnessie.nessie:nessie-client", version.ref = "nessie" }
 netty-buffer = { module = "io.netty:netty-buffer", version.ref = "netty-buffer" }
@@ -220,6 +223,7 @@ orc-tools = { module = "org.apache.orc:orc-tools", version.ref = "orc" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite-jdbc" }
 testcontainers = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+testcontainers-keycloak = { module = "com.github.dasniko:testcontainers-keycloak", version.ref = "testcontainers-keycloak" }
 testcontainers-minio = { module = "org.testcontainers:minio", version.ref = "testcontainers" }
 tez08-dag = { module = "org.apache.tez:tez-dag", version.ref = "tez08" }
 tez08-mapreduce = { module = "org.apache.tez:tez-mapreduce", version.ref = "tez08" }

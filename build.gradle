@@ -1099,9 +1099,30 @@ project(':iceberg-open-api') {
 
 project(':iceberg-rest-oauth') {
   apply plugin: 'java-test-fixtures'
+  apply plugin: 'jvm-test-suite'
 
   test {
     useJUnitPlatform()
+  }
+
+  testing {
+    suites {
+      intTest(JvmTestSuite) {
+        useJUnitJupiter()
+        dependencies {
+          implementation project()
+          implementation testFixtures(project())
+        }
+        check.dependsOn intTest
+        targets {
+          all {
+            testTask.configure {
+              shouldRunAfter(test)
+            }
+          }
+        }
+      }
+    }
   }
 
   dependencies {
@@ -1139,6 +1160,11 @@ project(':iceberg-rest-oauth') {
     testFixturesImplementation libs.mockserver.client.java
     testFixturesImplementation libs.mockserver.netty
 
+    testFixturesImplementation libs.testcontainers
+    testFixturesImplementation libs.testcontainers.junit.jupiter
+    testFixturesImplementation libs.testcontainers.keycloak
+    testFixturesImplementation libs.keycloak.admin.client
+
     testImplementation project(path: ':iceberg-bundled-guava', configuration: 'shadow')
 
     testImplementation libs.junit.jupiter
@@ -1151,6 +1177,21 @@ project(':iceberg-rest-oauth') {
 
     testImplementation libs.mockserver.client.java
     testImplementation libs.mockserver.netty
+
+    intTestImplementation project(':iceberg-core')
+
+    intTestImplementation libs.junit.jupiter
+    intTestImplementation libs.assertj.core
+    intTestImplementation libs.mockito.core
+
+    intTestImplementation libs.auth0.jwt
+
+    intTestImplementation libs.testcontainers
+    intTestImplementation libs.testcontainers.junit.jupiter
+    intTestImplementation libs.testcontainers.keycloak
+    intTestImplementation libs.keycloak.admin.client
+
+    intTestImplementation libs.slf4j.simple
   }
 }
 

@@ -22,14 +22,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.util.Set;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.net.URIBuilder;
+import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A user flow that responds to Authorization Code flows. */
+/**
+ * A user flow that responds to Authorization Code flows. This implementation is compatible with
+ * unit test expectations as well as with Keycloak's behavior.
+ */
 @Value.Immutable
 @OAuth2ImmutableStyle
 public abstract class AuthorizationCodeUserFlow extends UserFlow {
@@ -40,10 +45,18 @@ public abstract class AuthorizationCodeUserFlow extends UserFlow {
   public void run() {
     try {
       LOGGER.debug("Starting authorization code user flow.");
+      Set<String> cookies = Sets.newHashSet();
       URI callbackUri;
-      HttpURLConnection conn = (HttpURLConnection) authUrl().toURL().openConnection();
-      callbackUri = readRedirectUrl(conn);
-      conn.disconnect();
+      if (userBehavior().username().isEmpty()) {
+        HttpURLConnection conn = (HttpURLConnection) authUrl().toURL().openConnection();
+        callbackUri = readRedirectUrl(conn, cookies);
+        conn.disconnect();
+      } else {
+        var username = userBehavior().requiredUsername();
+        var password = userBehavior().requiredPassword();
+        callbackUri = login(authUrl(), username, password, cookies);
+      }
+
       invokeCallbackUrl(callbackUri);
       LOGGER.debug("Authorization code user flow completed.");
     } catch (Exception | AssertionError t) {
