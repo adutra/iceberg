@@ -134,6 +134,8 @@ public abstract class FlowFactory implements AutoCloseable {
     switch (spec().basicConfig().grantType()) {
       case CLIENT_CREDENTIALS:
         return ImmutableClientCredentialsFlow.builder();
+      case AUTHORIZATION_CODE:
+        return ImmutableAuthorizationCodeFlow.builder();
       case TOKEN_EXCHANGE:
         SubjectTokenSupplier subjectTokenSupplier =
             Preconditions.checkNotNull(

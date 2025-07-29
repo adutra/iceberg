@@ -18,10 +18,18 @@
  */
 package org.apache.iceberg.rest.auth.oauth2.flow;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Random;
+import org.apache.iceberg.rest.auth.oauth2.config.PkceTransformation;
 
 public final class FlowUtils {
+
+  public static final String OAUTH2_AGENT_TITLE = "======== Authentication Required ========";
+  public static final String OAUTH2_AGENT_OPEN_URL = "Please open the following URL to continue:";
 
   private static final Random RANDOM = new SecureRandom();
 
@@ -34,5 +42,64 @@ public final class FlowUtils {
         .limit(length)
         .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
         .toString();
+  }
+
+  /**
+   * Generates a code verifier for PKCE.
+   *
+   * <p>See <a href="https://datatracker.ietf.org/doc/html/rfc7636#section-4.1">RFC 7636 Section
+   * 4.1</a>
+   */
+  public static String generateCodeVerifier() {
+    byte[] codeVerifier = new byte[32];
+    RANDOM.nextBytes(codeVerifier);
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(codeVerifier);
+  }
+
+  /**
+   * Generates a code challenge for PKCE.
+   *
+   * <p>See <a href="https://datatracker.ietf.org/doc/html/rfc7636#section-4.2">RFC 7636 Section
+   * 4.2</a>
+   */
+  public static String generateCodeChallenge(
+      PkceTransformation transformation, String codeVerifier) {
+    switch (transformation) {
+      case S256:
+        byte[] bytes = codeVerifier.getBytes(StandardCharsets.US_ASCII);
+        MessageDigest messageDigest;
+        try {
+          messageDigest = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+          throw new RuntimeException(e);
+        }
+
+        messageDigest.update(bytes, 0, bytes.length);
+        byte[] digest = messageDigest.digest();
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(digest);
+      case PLAIN:
+        return codeVerifier;
+      default:
+        throw new IllegalArgumentException("Unsupported PKCE transformation: " + transformation);
+    }
+  }
+
+  /**
+   * Returns a context path for the local web server that listens for the authorization code
+   * callback.
+   *
+   * @see AuthorizationCodeFlow#contextPath()
+   */
+  public static String contextPath(String agentName) {
+    return '/' + agentName + "/auth";
+  }
+
+  /**
+   * Returns a message prefix for log messages and console output.
+   *
+   * @see AuthorizationCodeFlow#msgPrefix()
+   */
+  public static String msgPrefix(String agentName) {
+    return '[' + agentName + "] ";
   }
 }

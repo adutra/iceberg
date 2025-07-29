@@ -49,6 +49,8 @@ class TestEndpointProvider {
     try (TestEnvironment env = TestEnvironment.builder().discoveryEnabled(false).build()) {
       EndpointProvider endpointProvider = env.endpointProvider();
       assertThat(endpointProvider.resolvedTokenEndpoint()).isEqualTo(env.tokenEndpoint());
+      assertThat(endpointProvider.resolvedAuthorizationEndpoint())
+          .isEqualTo(env.authorizationEndpoint());
     }
   }
 
@@ -57,6 +59,8 @@ class TestEndpointProvider {
     try (TestEnvironment env = TestEnvironment.builder().discoveryEnabled(true).build()) {
       EndpointProvider endpointProvider = env.endpointProvider();
       assertThat(endpointProvider.resolvedTokenEndpoint()).isEqualTo(env.tokenEndpoint());
+      assertThat(endpointProvider.resolvedAuthorizationEndpoint())
+          .isEqualTo(env.authorizationEndpoint());
     }
   }
 
@@ -81,6 +85,7 @@ class TestEndpointProvider {
       MetadataDiscoveryResponse actual = endpointProvider.openIdProviderMetadata();
       assertThat(actual.issuerUrl()).isEqualTo(env.authorizationServerUrl());
       assertThat(actual.tokenEndpoint()).isEqualTo(env.tokenEndpoint());
+      assertThat(actual.authorizationEndpoint()).isEqualTo(env.authorizationEndpoint());
     }
   }
 

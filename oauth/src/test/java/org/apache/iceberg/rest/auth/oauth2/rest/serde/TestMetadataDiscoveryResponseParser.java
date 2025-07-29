@@ -79,11 +79,26 @@ public class TestMetadataDiscoveryResponseParser {
   }
 
   @Test
+  public void invalidAuthorizationEndpoint() {
+    assertThatThrownBy(
+            () ->
+                MetadataDiscoveryResponseParser.fromJson(
+                    "{\n"
+                        + "  \"issuer\" : \"https://example.com\",\n"
+                        + "  \"token_endpoint\" : \"https://example.com/token\",\n"
+                        + "  \"authorization_endpoint\" : 123\n"
+                        + "}"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Cannot parse to a string value: authorization_endpoint: 123");
+  }
+
+  @Test
   public void roundTripSerde() {
     MetadataDiscoveryResponse response =
         ImmutableMetadataDiscoveryResponse.builder()
             .issuerUrl(URI.create("https://example.com"))
             .tokenEndpoint(URI.create("https://example.com/token"))
+            .authorizationEndpoint(URI.create("https://example.com/authorize"))
             .build();
 
     String json = MetadataDiscoveryResponseParser.toJson(response, true);
@@ -92,6 +107,7 @@ public class TestMetadataDiscoveryResponseParser {
         .isEqualTo(
             "{\n"
                 + "  \"issuer\" : \"https://example.com\",\n"
+                + "  \"authorization_endpoint\" : \"https://example.com/authorize\",\n"
                 + "  \"token_endpoint\" : \"https://example.com/token\"\n"
                 + "}");
   }

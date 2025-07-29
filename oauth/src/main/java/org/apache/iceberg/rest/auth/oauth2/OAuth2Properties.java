@@ -69,6 +69,7 @@ public final class OAuth2Properties {
      *
      * <ul>
      *   <li>{@value GrantCommonNames#CLIENT_CREDENTIALS}
+     *   <li>{@value GrantCommonNames#AUTHORIZATION_CODE}
      *   <li>{@value GrantCommonNames#TOKEN_EXCHANGE}
      * </ul>
      *
@@ -181,6 +182,89 @@ public final class OAuth2Properties {
      * href="https://en.wikipedia.org/wiki/ISO_8601#Durations">ISO-8601 duration</a>.
      */
     public static final String IDLE_TIMEOUT = TokenRefresh.PREFIX + "idle-timeout";
+  }
+
+  /**
+   * Configuration properties for the <a
+   * href="https://datatracker.ietf.org/doc/html/rfc6749#section-4.1">Authorization Code Grant</a>
+   * flow.
+   *
+   * <p>This flow is used to obtain an access token by redirecting the user to the OAuth2
+   * authorization server, where they can log in and authorize the client application to access
+   * their resources.
+   */
+  public static final class AuthorizationCode {
+
+    public static final String PREFIX = OAuth2Properties.PREFIX + "auth-code.";
+
+    /**
+     * URL of the OAuth2 authorization endpoint. For Keycloak, this is typically {@code
+     * https://<keycloak-server>/realms/<realm-name>/protocol/openid-connect/auth}.
+     *
+     * <p>If using the "authorization_code" grant type, either this property or {@link
+     * Basic#ISSUER_URL} must be set. In case it is not set, the authorization endpoint will be
+     * discovered from the {@link Basic#ISSUER_URL issuer URL}, using the OpenID Connect Discovery
+     * metadata published by the issuer.
+     */
+    public static final String ENDPOINT = AuthorizationCode.PREFIX + "endpoint";
+
+    /**
+     * The redirect URI. This is the value of the {@code redirect_uri} parameter in the
+     * authorization code request.
+     *
+     * <p>Optional; if not present, the URL will be computed from {@value #CALLBACK_BIND_HOST},
+     * {@value #CALLBACK_BIND_PORT} and {@value #CALLBACK_CONTEXT_PATH}.
+     *
+     * <p>Specifying this value is generally only necessary in containerized environments, if a
+     * reverse proxy modifies the callback before it reaches the client, or if external TLS
+     * termination is performed.
+     */
+    public static final String REDIRECT_URI = AuthorizationCode.PREFIX + "redirect-uri";
+
+    /**
+     * Address of the OAuth2 authorization code flow local web server.
+     *
+     * <p>The internal web server will listen for the authorization code callback on this address.
+     * This is only used if the grant type to use is {@value GrantCommonNames#AUTHORIZATION_CODE}.
+     *
+     * <p>Optional; if not present, the default is server will listen on the loopback interface.
+     */
+    public static final String CALLBACK_BIND_HOST = AuthorizationCode.PREFIX + "callback-bind-host";
+
+    /**
+     * Port of the OAuth2 authorization code flow local web server.
+     *
+     * <p>The internal web server will listen for the authorization code callback on this port. This
+     * is only used if the grant type to use is {@value GrantCommonNames#AUTHORIZATION_CODE}.
+     *
+     * <p>Optional; if not present, a random port will be used.
+     */
+    public static final String CALLBACK_BIND_PORT = AuthorizationCode.PREFIX + "callback-bind-port";
+
+    /**
+     * Context path of the OAuth2 authorization code flow local web server.
+     *
+     * <p>Optional; if not present, a default context path will be used.
+     */
+    public static final String CALLBACK_CONTEXT_PATH =
+        AuthorizationCode.PREFIX + "callback-context-path";
+
+    /**
+     * Whether to enable PKCE (Proof Key for Code Exchange) for the authorization code flow. The
+     * default is {@code true}.
+     *
+     * @see <a href="https://www.rfc-editor.org/rfc/rfc7636">RFC 7636</a>
+     */
+    public static final String PKCE_ENABLED = AuthorizationCode.PREFIX + "pkce.enabled";
+
+    /**
+     * The PKCE transformation to use. The default is {@code S256}. This is only used if PKCE is
+     * enabled.
+     *
+     * @see <a href="https://www.rfc-editor.org/rfc/rfc7636#section-4.2">RFC 7636 Section 4.2</a>
+     */
+    public static final String PKCE_TRANSFORMATION =
+        AuthorizationCode.PREFIX + "pkce.transformation";
   }
 
   /**

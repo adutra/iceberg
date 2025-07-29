@@ -30,6 +30,7 @@ import org.apache.iceberg.util.JsonUtil;
 public class MetadataDiscoveryResponseParser {
 
   private static final String ISSUER = "issuer";
+  private static final String AUTHORIZATION_ENDPOINT = "authorization_endpoint";
   private static final String TOKEN_ENDPOINT = "token_endpoint";
 
   private MetadataDiscoveryResponseParser() {}
@@ -49,6 +50,7 @@ public class MetadataDiscoveryResponseParser {
     gen.writeStartObject();
 
     gen.writeStringField(ISSUER, response.issuerUrl().toString());
+    gen.writeStringField(AUTHORIZATION_ENDPOINT, response.authorizationEndpoint().toString());
     gen.writeStringField(TOKEN_ENDPOINT, response.tokenEndpoint().toString());
 
     gen.writeEndObject();
@@ -64,11 +66,13 @@ public class MetadataDiscoveryResponseParser {
 
     URI issuerUrl = URI.create(JsonUtil.getString(ISSUER, json));
     URI tokenEndpoint = URI.create(JsonUtil.getString(TOKEN_ENDPOINT, json));
+    URI authorizationEndpoint = URI.create(JsonUtil.getString(AUTHORIZATION_ENDPOINT, json));
 
     ImmutableMetadataDiscoveryResponse.Builder builder =
         ImmutableMetadataDiscoveryResponse.builder()
             .issuerUrl(issuerUrl)
-            .tokenEndpoint(tokenEndpoint);
+            .tokenEndpoint(tokenEndpoint)
+            .authorizationEndpoint(authorizationEndpoint);
 
     return builder.build();
   }

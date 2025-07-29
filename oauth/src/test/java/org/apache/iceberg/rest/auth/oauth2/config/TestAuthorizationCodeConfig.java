@@ -1,0 +1,246 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iceberg.rest.auth.oauth2.config;
+
+import static java.util.Collections.singletonList;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.AuthorizationCode.CALLBACK_BIND_HOST;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.AuthorizationCode.CALLBACK_BIND_PORT;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.AuthorizationCode.CALLBACK_CONTEXT_PATH;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.AuthorizationCode.ENDPOINT;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.AuthorizationCode.PKCE_ENABLED;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.AuthorizationCode.PKCE_TRANSFORMATION;
+import static org.apache.iceberg.rest.auth.oauth2.OAuth2Properties.AuthorizationCode.REDIRECT_URI;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.AssertionsForClassTypes.catchThrowable;
+
+import java.net.URI;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
+import org.apache.iceberg.rest.auth.oauth2.config.validator.ConfigValidator;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
+class TestAuthorizationCodeConfig {
+
+  @ParameterizedTest
+  @MethodSource
+  void testValidate(AuthorizationCodeConfig.Builder config, List<String> expected) {
+    assertThatIllegalArgumentException()
+        .isThrownBy(config::build)
+        .withMessage(ConfigValidator.buildDescription(expected.stream()));
+  }
+
+  static Stream<Arguments> testValidate() {
+    return Stream.of(
+        Arguments.of(
+            AuthorizationCodeConfig.builder().authorizationEndpoint(URI.create("/auth")),
+            singletonList(
+                "authorization code flow: authorization endpoint must not be relative (rest.auth.oauth2.auth-code.endpoint)")),
+        Arguments.of(
+            AuthorizationCodeConfig.builder()
+                .authorizationEndpoint(URI.create("https://example.com?query")),
+            singletonList(
+                "authorization code flow: authorization endpoint must not have a query part (rest.auth.oauth2.auth-code.endpoint)")),
+        Arguments.of(
+            AuthorizationCodeConfig.builder()
+                .authorizationEndpoint(URI.create("https://example.com#fragment")),
+            singletonList(
+                "authorization code flow: authorization endpoint must not have a fragment part (rest.auth.oauth2.auth-code.endpoint)")),
+        Arguments.of(
+            AuthorizationCodeConfig.builder()
+                .authorizationEndpoint(URI.create("https://example.com"))
+                .callbackBindPort(-1),
+            singletonList(
+                "authorization code flow: callback bind port must be between 0 and 65535 (inclusive) (rest.auth.oauth2.auth-code.callback-bind-port)")));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void testFromProperties(
+      Map<String, String> properties,
+      AuthorizationCodeConfig expected,
+      Throwable expectedThrowable) {
+    if (expectedThrowable == null) {
+      AuthorizationCodeConfig actual = AuthorizationCodeConfig.builder().from(properties).build();
+      assertThat(actual).isEqualTo(expected);
+    } else {
+      Throwable actual = catchThrowable(() -> AuthorizationCodeConfig.builder().from(properties));
+      assertThat(actual)
+          .isInstanceOf(expectedThrowable.getClass())
+          .hasMessage(expectedThrowable.getMessage());
+    }
+  }
+
+  static Stream<Arguments> testFromProperties() {
+    return Stream.of(
+        Arguments.of(null, null, new NullPointerException("Invalid properties map: null")),
+        Arguments.of(
+            Map.of(
+                ENDPOINT,
+                "https://example.com/auth",
+                CALLBACK_BIND_PORT,
+                "8080",
+                CALLBACK_BIND_HOST,
+                "1.2.3.4",
+                PKCE_ENABLED,
+                "false",
+                PKCE_TRANSFORMATION,
+                "plain"),
+            AuthorizationCodeConfig.builder()
+                .authorizationEndpoint(URI.create("https://example.com/auth"))
+                .callbackBindPort(8080)
+                .callbackBindHost("1.2.3.4")
+                .pkceEnabled(false)
+                .pkceTransformation(PkceTransformation.PLAIN)
+                .build(),
+            null));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void testMerge(
+      AuthorizationCodeConfig base,
+      Map<String, String> properties,
+      AuthorizationCodeConfig expected) {
+    AuthorizationCodeConfig merged = base.merge(properties);
+    assertThat(merged).isEqualTo(expected);
+  }
+
+  static Stream<Arguments> testMerge() {
+    return Stream.of(
+        emptyBase(), emptyProperties(), nonEmptyBaseNonEmptyProperties(), baseCleared());
+  }
+
+  private static Arguments emptyBase() {
+    AuthorizationCodeConfig base = AuthorizationCodeConfig.builder().build();
+    Map<String, String> properties =
+        Map.of(
+            ENDPOINT,
+            "https://example.com/auth",
+            CALLBACK_BIND_PORT,
+            "8080",
+            CALLBACK_BIND_HOST,
+            "1.2.3.4",
+            CALLBACK_CONTEXT_PATH,
+            "/callback",
+            REDIRECT_URI,
+            "https://example.com/callback",
+            PKCE_ENABLED,
+            "false",
+            PKCE_TRANSFORMATION,
+            "plain");
+    AuthorizationCodeConfig expected =
+        AuthorizationCodeConfig.builder()
+            .authorizationEndpoint(URI.create("https://example.com/auth"))
+            .callbackBindPort(8080)
+            .callbackBindHost("1.2.3.4")
+            .callbackContextPath("/callback")
+            .redirectUri(URI.create("https://example.com/callback"))
+            .pkceEnabled(false)
+            .pkceTransformation(PkceTransformation.PLAIN)
+            .build();
+    return Arguments.of(base, properties, expected);
+  }
+
+  private static Arguments emptyProperties() {
+    AuthorizationCodeConfig base =
+        AuthorizationCodeConfig.builder()
+            .authorizationEndpoint(URI.create("https://example.com/auth"))
+            .callbackBindPort(8080)
+            .callbackBindHost("1.2.3.4")
+            .callbackContextPath("/callback")
+            .redirectUri(URI.create("https://example.com/callback"))
+            .pkceEnabled(false)
+            .pkceTransformation(PkceTransformation.PLAIN)
+            .build();
+    return Arguments.of(base, Map.of(), base);
+  }
+
+  private static Arguments nonEmptyBaseNonEmptyProperties() {
+    AuthorizationCodeConfig base =
+        AuthorizationCodeConfig.builder()
+            .authorizationEndpoint(URI.create("https://example.com/auth"))
+            .callbackBindPort(8080)
+            .callbackBindHost("1.2.3.4")
+            .callbackContextPath("/callback")
+            .redirectUri(URI.create("https://example.com/callback"))
+            .pkceEnabled(false)
+            .pkceTransformation(PkceTransformation.PLAIN)
+            .build();
+    Map<String, String> properties =
+        Map.of(
+            ENDPOINT,
+            "https://example2.com/auth",
+            CALLBACK_BIND_PORT,
+            "8081",
+            CALLBACK_BIND_HOST,
+            "2.3.4.5",
+            CALLBACK_CONTEXT_PATH,
+            "/callback2",
+            REDIRECT_URI,
+            "https://example2.com/callback",
+            PKCE_ENABLED,
+            "true",
+            PKCE_TRANSFORMATION,
+            "S256");
+    AuthorizationCodeConfig expected =
+        AuthorizationCodeConfig.builder()
+            .authorizationEndpoint(URI.create("https://example2.com/auth"))
+            .callbackBindPort(8081)
+            .callbackBindHost("2.3.4.5")
+            .callbackContextPath("/callback2")
+            .redirectUri(URI.create("https://example2.com/callback"))
+            .pkceEnabled(true)
+            .pkceTransformation(PkceTransformation.S256)
+            .build();
+    return Arguments.of(base, properties, expected);
+  }
+
+  private static Arguments baseCleared() {
+    AuthorizationCodeConfig base =
+        AuthorizationCodeConfig.builder()
+            .authorizationEndpoint(URI.create("https://example.com/auth"))
+            .callbackBindPort(8080)
+            .callbackBindHost("1.2.3.4")
+            .callbackContextPath("/callback")
+            .redirectUri(URI.create("https://example.com/callback"))
+            .build();
+    Map<String, String> properties =
+        Map.of(
+            ENDPOINT,
+            "",
+            CALLBACK_BIND_PORT,
+            "",
+            CALLBACK_BIND_HOST,
+            "",
+            CALLBACK_CONTEXT_PATH,
+            "",
+            REDIRECT_URI,
+            "",
+            PKCE_ENABLED,
+            "",
+            PKCE_TRANSFORMATION,
+            "");
+    AuthorizationCodeConfig expected = AuthorizationCodeConfig.DEFAULT;
+    return Arguments.of(base, properties, expected);
+  }
+}

@@ -19,13 +19,17 @@
 package org.apache.iceberg.rest.auth.oauth2.agent;
 
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties;
+import org.apache.iceberg.rest.auth.oauth2.config.AuthorizationCodeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.TokenExchangeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.TokenRefreshConfig;
+import org.apache.iceberg.rest.auth.oauth2.config.validator.ConfigValidator;
+import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
 import org.immutables.value.Value;
 
@@ -38,6 +42,15 @@ public interface OAuth2AgentSpec {
    * Required.
    */
   BasicConfig basicConfig();
+
+  /**
+   * The authorization code configuration. Required for the {@link GrantType#AUTHORIZATION_CODE}
+   * grant type.
+   */
+  @Value.Default
+  default AuthorizationCodeConfig authorizationCodeConfig() {
+    return AuthorizationCodeConfig.DEFAULT;
+  }
 
   /** The token refresh configuration. Optional. */
   @Value.Default
@@ -57,11 +70,29 @@ public interface OAuth2AgentSpec {
     return RuntimeConfig.DEFAULT;
   }
 
+  @Value.Check
+  default void validate() {
+    ConfigValidator validator = new ConfigValidator();
+    // We only need to validate constraints that span multiple configuration options here;
+    // individual configuration options are validated in their respective classes.
+    if (basicConfig().grantType() == GrantType.AUTHORIZATION_CODE) {
+      validator.check(
+          basicConfig().issuerUrl().isPresent()
+              || authorizationCodeConfig().authorizationEndpoint().isPresent(),
+          List.of(OAuth2Properties.Basic.ISSUER_URL, OAuth2Properties.AuthorizationCode.ENDPOINT),
+          "either issuer URL or authorization endpoint must be set if grant type is '%s'",
+          GrantType.AUTHORIZATION_CODE.commonName());
+    }
+
+    validator.validate();
+  }
+
   /** Merges the given properties into this {@link OAuth2AgentSpec} and returns the result. */
   default OAuth2AgentSpec merge(Map<String, String> properties) {
     Preconditions.checkNotNull(properties, "Invalid properties map: null");
     return builder()
         .basicConfig(basicConfig().merge(properties))
+        .authorizationCodeConfig(authorizationCodeConfig().merge(properties))
         .tokenRefreshConfig(tokenRefreshConfig().merge(properties))
         .tokenExchangeConfig(tokenExchangeConfig().merge(properties))
         .runtimeConfig(runtimeConfig().merge(properties))
@@ -89,6 +120,7 @@ public interface OAuth2AgentSpec {
     default Builder from(Map<String, String> properties) {
       Preconditions.checkNotNull(properties, "Invalid properties map: null");
       return basicConfig(BasicConfig.builder().from(properties).build())
+          .authorizationCodeConfig(AuthorizationCodeConfig.builder().from(properties).build())
           .tokenRefreshConfig(TokenRefreshConfig.builder().from(properties).build())
           .tokenExchangeConfig(TokenExchangeConfig.builder().from(properties).build())
           .runtimeConfig(RuntimeConfig.builder().from(properties).build());
@@ -96,6 +128,9 @@ public interface OAuth2AgentSpec {
 
     @CanIgnoreReturnValue
     Builder basicConfig(BasicConfig basicConfig);
+
+    @CanIgnoreReturnValue
+    Builder authorizationCodeConfig(AuthorizationCodeConfig authorizationCodeConfig);
 
     @CanIgnoreReturnValue
     Builder tokenRefreshConfig(TokenRefreshConfig tokenRefreshConfig);

@@ -22,64 +22,47 @@ import static org.apache.iceberg.rest.auth.oauth2.test.TokenAssertions.assertTok
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.concurrent.ExecutionException;
+import org.apache.iceberg.rest.auth.oauth2.config.PkceTransformation;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.auth.oauth2.test.TestEnvironment;
 import org.apache.iceberg.rest.auth.oauth2.token.Tokens;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-class TestTokenExchangeFlow {
-
-  @ParameterizedTest
-  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
-  void fetchNewTokensStatic(boolean privateClient, boolean returnRefreshTokens)
-      throws InterruptedException, ExecutionException {
-    try (TestEnvironment env =
-            TestEnvironment.builder()
-                .grantType(GrantType.TOKEN_EXCHANGE)
-                .privateClient(privateClient)
-                .returnRefreshTokens(returnRefreshTokens)
-                .build();
-        FlowFactory flowFactory = env.createFlowFactory()) {
-      InitialFlow flow = flowFactory.createInitialFlow();
-      assertThat(flow).isInstanceOf(TokenExchangeFlow.class);
-      Tokens tokens = flow.fetchNewTokens().toCompletableFuture().get();
-      assertTokens(tokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
-    }
-  }
+class TestAuthorizationCodeFlow {
 
   @ParameterizedTest
   @CsvSource({
-    "true,  true,  CLIENT_CREDENTIALS, AUTHORIZATION_CODE",
-    "true,  false, CLIENT_CREDENTIALS, AUTHORIZATION_CODE",
-    "false, true,  CLIENT_CREDENTIALS, AUTHORIZATION_CODE",
-    "false, false, CLIENT_CREDENTIALS, AUTHORIZATION_CODE",
-    "true,  true,  AUTHORIZATION_CODE, CLIENT_CREDENTIALS",
-    "true,  false, AUTHORIZATION_CODE, CLIENT_CREDENTIALS",
-    "false, true,  AUTHORIZATION_CODE, CLIENT_CREDENTIALS",
-    "false, false, AUTHORIZATION_CODE, CLIENT_CREDENTIALS"
+    "true, S256,  true,  true",
+    "true, S256,  true,  false",
+    "true, S256,  false, true",
+    "true, S256,  false, false",
+    "true, PLAIN, true,  true",
+    "true, PLAIN, true,  false",
+    "true, PLAIN, false, true",
+    "true, PLAIN, false, false",
+    "false, S256, true,  true",
+    "false, S256, true,  false",
+    "false, S256, false, true",
+    "false, S256, false, false"
   })
-  void fetchNewTokensDynamic(
+  void fetchNewTokens(
+      boolean pkceEnabled,
+      PkceTransformation pkceTransformation,
       boolean privateClient,
-      boolean returnRefreshTokens,
-      GrantType subjectGrantType,
-      GrantType actorGrantType)
+      boolean returnRefreshTokens)
       throws InterruptedException, ExecutionException {
     try (TestEnvironment env =
             TestEnvironment.builder()
-                .grantType(GrantType.TOKEN_EXCHANGE)
+                .grantType(GrantType.AUTHORIZATION_CODE)
+                .pkceEnabled(pkceEnabled)
+                .pkceTransformation(pkceTransformation)
                 .privateClient(privateClient)
-                // increase concurrency so that token fetches can happen in parallel
-                .executorPoolSize(3)
                 .returnRefreshTokens(returnRefreshTokens)
-                .subjectToken(null)
-                .subjectGrantType(subjectGrantType)
-                .actorToken(null)
-                .actorGrantType(actorGrantType)
                 .build();
         FlowFactory flowFactory = env.createFlowFactory()) {
       InitialFlow flow = flowFactory.createInitialFlow();
-      assertThat(flow).isInstanceOf(TokenExchangeFlow.class);
+      assertThat(flow).isInstanceOf(AuthorizationCodeFlow.class);
       Tokens tokens = flow.fetchNewTokens().toCompletableFuture().get();
       assertTokens(tokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
     }

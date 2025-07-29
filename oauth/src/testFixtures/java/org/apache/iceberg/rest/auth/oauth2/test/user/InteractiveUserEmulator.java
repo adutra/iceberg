@@ -1,0 +1,224 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.iceberg.rest.auth.oauth2.test.user;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.io.PrintStream;
+import java.io.UncheckedIOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class InteractiveUserEmulator implements UserEmulator, Runnable {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(InteractiveUserEmulator.class);
+
+  private static final AtomicInteger COUNTER = new AtomicInteger(1);
+
+  private final List<Future<?>> futures = new CopyOnWriteArrayList<>();
+  private final List<Consumer<Throwable>> errorListeners = new CopyOnWriteArrayList<>();
+
+  private final TerminalEmulator terminal;
+  private final UserBehavior userBehavior;
+  private final ExecutorService executor;
+
+  private final AtomicBoolean closing = new AtomicBoolean();
+  private final AtomicReference<Throwable> error = new AtomicReference<>();
+
+  private URI authUrl;
+
+  public InteractiveUserEmulator(UserBehavior userBehavior) {
+    this.userBehavior = userBehavior;
+    terminal = new TerminalEmulator();
+    executor =
+        Executors.newCachedThreadPool(
+            r -> new Thread(r, "user-emulator-" + COUNTER.getAndIncrement()));
+    futures.add(executor.submit(this));
+  }
+
+  @Override
+  public void run() {
+    LOGGER.debug("Starting user emulator.");
+    try {
+      String line;
+      while ((line = terminal.readLine()) != null) {
+        var flow = processLine(line);
+        flow.ifPresent(f -> futures.add(executor.submit(f)));
+      }
+    } catch (Exception | AssertionError e) {
+      recordFailure(e);
+    }
+  }
+
+  @Override
+  public PrintStream console() {
+    return terminal.consoleOut;
+  }
+
+  @Override
+  public void addErrorListener(Consumer<Throwable> callback) {
+    this.errorListeners.add(callback);
+  }
+
+  private Optional<UserFlow> processLine(String line) {
+    UserFlow flow = null;
+    if (authUrl == null) {
+      if (line.startsWith("[") && line.contains("http")) {
+        authUrl = extractAuthUrl(line);
+        if (authUrl.getQuery() != null && authUrl.getQuery().contains("redirect_uri")) {
+          flow =
+              ImmutableAuthorizationCodeUserFlow.builder()
+                  .userBehavior(userBehavior)
+                  .authUrl(authUrl)
+                  .errorListener(this::recordFailure)
+                  .build();
+        }
+      }
+    }
+
+    if (flow != null) {
+      authUrl = null; // reset for next flow
+      return Optional.of(flow);
+    }
+
+    return Optional.empty();
+  }
+
+  private static URI extractAuthUrl(String line) {
+    URI authUrl;
+    try {
+      authUrl = new URI(line.substring(line.indexOf("http")));
+    } catch (URISyntaxException e) {
+      throw new RuntimeException(e);
+    }
+
+    return authUrl;
+  }
+
+  private void recordFailure(Throwable failure) {
+    if (!closing.get()) {
+      error.accumulateAndGet(
+          failure,
+          (failure1, failure2) -> {
+            if (failure1 == null) {
+              return failure2;
+            } else {
+              failure1.addSuppressed(failure2);
+              return failure1;
+            }
+          });
+      for (Consumer<Throwable> l : errorListeners) {
+        try {
+          l.accept(failure);
+        } catch (Exception e) {
+          LOGGER.warn("Error invoking error listener", e);
+        }
+      }
+    }
+  }
+
+  @Override
+  public void close() {
+    if (closing.compareAndSet(false, true)) {
+      LOGGER.debug("Closing user emulator.");
+      try {
+        terminal.close();
+      } catch (IOException e) {
+        LOGGER.warn("Error closing user emulator terminal", e);
+      }
+
+      futures.forEach(future -> future.cancel(true));
+      executor.shutdown();
+      try {
+        if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
+          executor.shutdownNow();
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+
+      Throwable err = error.get();
+      if (err != null) {
+        if (err instanceof Error) {
+          throw (Error) err;
+        } else if (err instanceof RuntimeException) {
+          throw (RuntimeException) err;
+        } else {
+          throw new RuntimeException(err);
+        }
+      }
+    }
+  }
+
+  private static class TerminalEmulator implements AutoCloseable {
+
+    private final PrintStream consoleOut;
+    private final BufferedReader consoleIn;
+    private final PrintStream stdOut;
+
+    private TerminalEmulator() {
+      try {
+        PipedOutputStream pipeOut = new PipedOutputStream();
+        PipedInputStream pipeIn = new PipedInputStream(pipeOut);
+        consoleOut = new PrintStream(pipeOut, true, StandardCharsets.UTF_8);
+        consoleIn = new BufferedReader(new InputStreamReader(pipeIn, StandardCharsets.UTF_8));
+        stdOut = System.out;
+      } catch (IOException e) {
+        throw new UncheckedIOException(e);
+      }
+    }
+
+    @Override
+    public void close() throws IOException {
+      try {
+        consoleOut.close();
+      } finally {
+        consoleIn.close();
+      }
+    }
+
+    private String readLine() throws IOException {
+      var line = consoleIn.readLine();
+      if (line != null) {
+        // echo line to the real stdout so it's visible in the test output
+        stdOut.println(line);
+        stdOut.flush();
+      }
+
+      return line;
+    }
+  }
+}

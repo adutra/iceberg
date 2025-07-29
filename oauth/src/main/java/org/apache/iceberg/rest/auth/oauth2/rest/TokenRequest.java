@@ -30,6 +30,7 @@ import org.immutables.value.Value.Check;
  * Common base for all requests to the token endpoint.
  *
  * @see ClientCredentialsTokenRequest
+ * @see AuthorizationCodeTokenRequest
  * @see RefreshTokenRequest
  * @see TokenExchangeRequest
  */

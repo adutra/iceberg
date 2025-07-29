@@ -23,6 +23,7 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
 public enum GrantType {
   CLIENT_CREDENTIALS(GrantCanonicalNames.CLIENT_CREDENTIALS, GrantCommonNames.CLIENT_CREDENTIALS),
+  AUTHORIZATION_CODE(GrantCanonicalNames.AUTHORIZATION_CODE, GrantCommonNames.AUTHORIZATION_CODE),
   REFRESH_TOKEN(GrantCanonicalNames.REFRESH_TOKEN, GrantCommonNames.REFRESH_TOKEN),
   TOKEN_EXCHANGE(GrantCanonicalNames.TOKEN_EXCHANGE, GrantCommonNames.TOKEN_EXCHANGE);
 
@@ -52,6 +53,10 @@ public enum GrantType {
     }
 
     throw new IllegalArgumentException("Unknown grant type: " + name);
+  }
+
+  public boolean requiresUserInteraction() {
+    return this == AUTHORIZATION_CODE;
   }
 
   public boolean initial() {

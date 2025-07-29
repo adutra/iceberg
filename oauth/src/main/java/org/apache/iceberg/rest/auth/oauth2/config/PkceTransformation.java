@@ -16,15 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.rest.auth.oauth2.grant;
+package org.apache.iceberg.rest.auth.oauth2.config;
 
-/** Canonical names for OAuth2 grant types, as defined in the OAuth2 specifications. */
-public final class GrantCanonicalNames {
+import java.util.Locale;
+import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 
-  private GrantCanonicalNames() {}
+public enum PkceTransformation {
+  S256("S256"),
+  PLAIN("plain"),
+  ;
 
-  public static final String CLIENT_CREDENTIALS = "client_credentials";
-  public static final String AUTHORIZATION_CODE = "authorization_code";
-  public static final String REFRESH_TOKEN = "refresh_token";
-  public static final String TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange";
+  private final String canonicalName;
+
+  PkceTransformation(String canonicalName) {
+    this.canonicalName = canonicalName;
+  }
+
+  public String canonicalName() {
+    return canonicalName;
+  }
+
+  public static PkceTransformation fromConfigName(String name) {
+    Preconditions.checkNotNull(name, "Invalid PKCE transformation name: null");
+    try {
+      return valueOf(name.toUpperCase(Locale.ROOT));
+    } catch (IllegalArgumentException ignore) {
+      throw new IllegalArgumentException("Unknown PKCE transformation: " + name);
+    }
+  }
 }

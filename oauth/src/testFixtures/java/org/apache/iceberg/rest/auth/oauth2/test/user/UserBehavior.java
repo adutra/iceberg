@@ -16,15 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.iceberg.rest.auth.oauth2.grant;
+package org.apache.iceberg.rest.auth.oauth2.test.user;
 
-/** Canonical names for OAuth2 grant types, as defined in the OAuth2 specifications. */
-public final class GrantCanonicalNames {
+import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
+import org.immutables.value.Value;
 
-  private GrantCanonicalNames() {}
+/** Describes the desired behavior of a user when interacting with the authorization server. */
+@Value.Immutable
+@OAuth2ImmutableStyle
+public interface UserBehavior {
 
-  public static final String CLIENT_CREDENTIALS = "client_credentials";
-  public static final String AUTHORIZATION_CODE = "authorization_code";
-  public static final String REFRESH_TOKEN = "refresh_token";
-  public static final String TOKEN_EXCHANGE = "urn:ietf:params:oauth:grant-type:token-exchange";
+  /** A simplified user behavior for unit tests. */
+  UserBehavior DEFAULT = builder().build();
+
+  static ImmutableUserBehavior.Builder builder() {
+    return ImmutableUserBehavior.builder();
+  }
+
+  /**
+   * Whether to emulate a user failure, for example by entering a wrong code or by denying consent.
+   */
+  @Value.Default
+  default boolean emulateFailure() {
+    return false;
+  }
 }
