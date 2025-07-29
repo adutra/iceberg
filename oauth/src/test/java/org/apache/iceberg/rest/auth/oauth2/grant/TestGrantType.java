@@ -68,6 +68,9 @@ class TestGrantType {
         Arguments.of("refresh_token", GrantType.REFRESH_TOKEN),
         Arguments.of("authorization_code", GrantType.AUTHORIZATION_CODE),
         Arguments.of("AUTHORIZATION_CODE", GrantType.AUTHORIZATION_CODE),
+        Arguments.of("urn:ietf:params:oauth:grant-type:device_code", GrantType.DEVICE_CODE),
+        Arguments.of("device_code", GrantType.DEVICE_CODE),
+        Arguments.of("DEVICE_CODE", GrantType.DEVICE_CODE),
         Arguments.of("REFRESH_TOKEN", GrantType.REFRESH_TOKEN),
         Arguments.of("urn:ietf:params:oauth:grant-type:token-exchange", GrantType.TOKEN_EXCHANGE),
         Arguments.of("token_exchange", GrantType.TOKEN_EXCHANGE),
@@ -78,6 +81,7 @@ class TestGrantType {
     return Stream.of(
         Arguments.of(GrantType.CLIENT_CREDENTIALS, true),
         Arguments.of(GrantType.AUTHORIZATION_CODE, true),
+        Arguments.of(GrantType.DEVICE_CODE, true),
         Arguments.of(GrantType.REFRESH_TOKEN, false),
         Arguments.of(GrantType.TOKEN_EXCHANGE, true));
   }
@@ -86,6 +90,7 @@ class TestGrantType {
     return Stream.of(
         Arguments.of(GrantType.CLIENT_CREDENTIALS, false),
         Arguments.of(GrantType.AUTHORIZATION_CODE, true),
+        Arguments.of(GrantType.DEVICE_CODE, true),
         Arguments.of(GrantType.REFRESH_TOKEN, false),
         Arguments.of(GrantType.TOKEN_EXCHANGE, false));
   }

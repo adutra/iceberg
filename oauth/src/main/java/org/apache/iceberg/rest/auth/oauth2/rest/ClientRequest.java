@@ -30,6 +30,8 @@ import org.immutables.value.Value.Redacted;
  *
  * @see ClientCredentialsTokenRequest
  * @see AuthorizationCodeTokenRequest
+ * @see DeviceAccessTokenRequest
+ * @see DeviceAuthorizationRequest
  * @see RefreshTokenRequest
  * @see TokenExchangeRequest
  */

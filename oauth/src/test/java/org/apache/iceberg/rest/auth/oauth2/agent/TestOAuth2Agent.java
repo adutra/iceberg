@@ -132,6 +132,54 @@ class TestOAuth2Agent {
 
   @ParameterizedTest
   @CsvSource({"true, true", "true, false", "false, true", "false, false"})
+  void testDeviceCode(boolean privateClient, boolean returnRefreshTokens) {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.DEVICE_CODE)
+                .privateClient(privateClient)
+                .returnRefreshTokens(returnRefreshTokens)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      Tokens currentTokens = agent.authenticateInternal();
+      assertTokens(currentTokens, "access_initial", returnRefreshTokens ? "refresh_initial" : null);
+    }
+  }
+
+  @Test
+  void testDeviceCodeTimeout() {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.DEVICE_CODE)
+                .timeout(Duration.ofMillis(10))
+                .forceInactiveUser(true)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      soft.assertThatThrownBy(agent::authenticate)
+          .hasMessage("Timed out waiting for an access token")
+          .cause()
+          .isInstanceOf(TimeoutException.class);
+    }
+  }
+
+  @Test
+  void testDeviceCodeUnauthorized() {
+    try (TestEnvironment env =
+            TestEnvironment.builder()
+                .grantType(GrantType.DEVICE_CODE)
+                .timeout(Duration.ofMillis(500))
+                .userBehavior(UserBehavior.builder().emulateFailure(true).build())
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      // A user failure means the flow will never complete, so a timeout is expected
+      soft.assertThatThrownBy(agent::authenticate)
+          .hasMessage("Timed out waiting for an access token")
+          .cause()
+          .isInstanceOf(TimeoutException.class);
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
   void testTokenExchangeStaticSubjectActor(boolean privateClient, boolean returnRefreshTokens) {
     try (TestEnvironment env =
             TestEnvironment.builder()
@@ -152,7 +200,11 @@ class TestOAuth2Agent {
     "true,  true,  AUTHORIZATION_CODE",
     "true,  false, AUTHORIZATION_CODE",
     "false, true,  AUTHORIZATION_CODE",
-    "false, false, AUTHORIZATION_CODE"
+    "false, false, AUTHORIZATION_CODE",
+    "true,  true,  DEVICE_CODE",
+    "true,  false, DEVICE_CODE",
+    "false, true,  DEVICE_CODE",
+    "false, false, DEVICE_CODE"
   })
   void testTokenExchangeDynamicSubject(
       boolean privateClient, boolean returnRefreshTokens, GrantType grantType)
@@ -182,7 +234,11 @@ class TestOAuth2Agent {
     "true,  true,  AUTHORIZATION_CODE",
     "true,  false, AUTHORIZATION_CODE",
     "false, true,  AUTHORIZATION_CODE",
-    "false, false, AUTHORIZATION_CODE"
+    "false, false, AUTHORIZATION_CODE",
+    "true,  true,  DEVICE_CODE",
+    "true,  false, DEVICE_CODE",
+    "false, true,  DEVICE_CODE",
+    "false, false, DEVICE_CODE"
   })
   void testTokenExchangeDynamicActor(
       boolean privateClient, boolean returnRefreshTokens, GrantType grantType)

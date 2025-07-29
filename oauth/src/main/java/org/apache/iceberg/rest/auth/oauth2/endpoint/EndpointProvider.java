@@ -73,6 +73,13 @@ public abstract class EndpointProvider {
    */
   protected abstract Optional<URI> authorizationEndpoint();
 
+  /**
+   * The device authorization endpoint as provided in the configuration. Only used when the grant
+   * type is {@link GrantType#DEVICE_CODE}. Either this or the issuer URL must be configured for the
+   * endpoint provider to work.
+   */
+  protected abstract Optional<URI> deviceAuthorizationEndpoint();
+
   protected abstract Supplier<RESTClient> restClientSupplier();
 
   @Value.Lazy
@@ -84,6 +91,16 @@ public abstract class EndpointProvider {
   public URI resolvedAuthorizationEndpoint() {
     return authorizationEndpoint()
         .orElseGet(() -> openIdProviderMetadata().authorizationEndpoint());
+  }
+
+  @Value.Lazy
+  public URI resolvedDeviceAuthorizationEndpoint() {
+    return deviceAuthorizationEndpoint()
+        .or(() -> Optional.ofNullable(openIdProviderMetadata().deviceAuthorizationEndpoint()))
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "OpenID provider metadata does not contain a device authorization endpoint"));
   }
 
   @Value.Lazy
@@ -137,6 +154,9 @@ public abstract class EndpointProvider {
 
     @CanIgnoreReturnValue
     Builder authorizationEndpoint(URI authorizationEndpoint);
+
+    @CanIgnoreReturnValue
+    Builder deviceAuthorizationEndpoint(URI deviceAuthorizationEndpoint);
 
     @CanIgnoreReturnValue
     Builder restClientSupplier(Supplier<RESTClient> restClient);

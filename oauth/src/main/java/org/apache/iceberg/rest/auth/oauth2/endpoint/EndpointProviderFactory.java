@@ -34,6 +34,9 @@ public final class EndpointProviderFactory {
     spec.authorizationCodeConfig()
         .authorizationEndpoint()
         .ifPresent(builder::authorizationEndpoint);
+    spec.deviceCodeConfig()
+        .deviceAuthorizationEndpoint()
+        .ifPresent(builder::deviceAuthorizationEndpoint);
     return builder.build();
   }
 }

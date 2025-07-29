@@ -19,6 +19,7 @@
 package org.apache.iceberg.rest.auth.oauth2.endpoint;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.InstanceOfAssertFactories.throwable;
 
@@ -31,6 +32,7 @@ import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.JsonBody;
@@ -51,16 +53,31 @@ class TestEndpointProvider {
       assertThat(endpointProvider.resolvedTokenEndpoint()).isEqualTo(env.tokenEndpoint());
       assertThat(endpointProvider.resolvedAuthorizationEndpoint())
           .isEqualTo(env.authorizationEndpoint());
+      assertThat(endpointProvider.resolvedDeviceAuthorizationEndpoint())
+          .isEqualTo(env.deviceAuthorizationEndpoint());
     }
   }
 
-  @Test
-  void withDiscovery() {
-    try (TestEnvironment env = TestEnvironment.builder().discoveryEnabled(true).build()) {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void withDiscovery(boolean includeDeviceAuthEndpoint) {
+    try (TestEnvironment env =
+        TestEnvironment.builder()
+            .includeDeviceAuthEndpointInDiscoveryMetadata(includeDeviceAuthEndpoint)
+            .build()) {
       EndpointProvider endpointProvider = env.endpointProvider();
       assertThat(endpointProvider.resolvedTokenEndpoint()).isEqualTo(env.tokenEndpoint());
       assertThat(endpointProvider.resolvedAuthorizationEndpoint())
           .isEqualTo(env.authorizationEndpoint());
+      if (includeDeviceAuthEndpoint) {
+        assertThat(endpointProvider.resolvedDeviceAuthorizationEndpoint())
+            .isEqualTo(env.deviceAuthorizationEndpoint());
+      } else {
+        assertThatThrownBy(endpointProvider::resolvedDeviceAuthorizationEndpoint)
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage(
+                "OpenID provider metadata does not contain a device authorization endpoint");
+      }
     }
   }
 
@@ -86,6 +103,7 @@ class TestEndpointProvider {
       assertThat(actual.issuerUrl()).isEqualTo(env.authorizationServerUrl());
       assertThat(actual.tokenEndpoint()).isEqualTo(env.tokenEndpoint());
       assertThat(actual.authorizationEndpoint()).isEqualTo(env.authorizationEndpoint());
+      assertThat(actual.deviceAuthorizationEndpoint()).isEqualTo(env.deviceAuthorizationEndpoint());
     }
   }
 

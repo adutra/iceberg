@@ -31,5 +31,6 @@ public final class GrantCommonNames {
   public static final String AUTHORIZATION_CODE = GrantCanonicalNames.AUTHORIZATION_CODE;
   public static final String REFRESH_TOKEN = GrantCanonicalNames.REFRESH_TOKEN;
 
+  public static final String DEVICE_CODE = "device_code";
   public static final String TOKEN_EXCHANGE = "token_exchange";
 }

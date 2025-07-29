@@ -50,14 +50,15 @@ class TestTokenExchangeFlow {
 
   @ParameterizedTest
   @CsvSource({
-    "true,  true,  CLIENT_CREDENTIALS, AUTHORIZATION_CODE",
-    "true,  false, CLIENT_CREDENTIALS, AUTHORIZATION_CODE",
-    "false, true,  CLIENT_CREDENTIALS, AUTHORIZATION_CODE",
-    "false, false, CLIENT_CREDENTIALS, AUTHORIZATION_CODE",
-    "true,  true,  AUTHORIZATION_CODE, CLIENT_CREDENTIALS",
-    "true,  false, AUTHORIZATION_CODE, CLIENT_CREDENTIALS",
-    "false, true,  AUTHORIZATION_CODE, CLIENT_CREDENTIALS",
-    "false, false, AUTHORIZATION_CODE, CLIENT_CREDENTIALS"
+    "true,  false, CLIENT_CREDENTIALS , CLIENT_CREDENTIALS",
+    "true,  true,  AUTHORIZATION_CODE , DEVICE_CODE",
+    "true,  false, AUTHORIZATION_CODE , DEVICE_CODE",
+    "false, true,  AUTHORIZATION_CODE , DEVICE_CODE",
+    "false, false, AUTHORIZATION_CODE , DEVICE_CODE",
+    "true,  true,  DEVICE_CODE        , AUTHORIZATION_CODE",
+    "true,  false, DEVICE_CODE        , AUTHORIZATION_CODE",
+    "false, true,  DEVICE_CODE        , AUTHORIZATION_CODE",
+    "false, false, DEVICE_CODE        , AUTHORIZATION_CODE"
   })
   void fetchNewTokensDynamic(
       boolean privateClient,

@@ -31,6 +31,8 @@ import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthenticator;
 import org.apache.iceberg.rest.auth.oauth2.config.ConfigUtils;
 import org.apache.iceberg.rest.auth.oauth2.endpoint.EndpointProvider;
+import org.apache.iceberg.rest.auth.oauth2.rest.DeviceAuthorizationRequest;
+import org.apache.iceberg.rest.auth.oauth2.rest.DeviceAuthorizationResponse;
 import org.apache.iceberg.rest.auth.oauth2.rest.PostFormRequest;
 import org.apache.iceberg.rest.auth.oauth2.rest.TokenRequest;
 import org.apache.iceberg.rest.auth.oauth2.rest.TokenResponse;
@@ -79,17 +81,46 @@ abstract class AbstractFlow implements Flow {
                   FlowErrorHandler.INSTANCE);
             },
             executor())
-        .whenComplete(this::log)
+        .whenComplete((resp, error) -> log("token endpoint", resp, error))
         .thenApply(resp -> resp.asTokens(spec().runtimeConfig().clock()));
   }
 
-  private void log(RESTResponse response, Throwable error) {
+  protected CompletionStage<DeviceAuthorizationResponse> invokeDeviceAuthEndpoint() {
+    return CompletableFuture.supplyAsync(
+            () -> {
+              URI deviceAuthorizationEndpoint =
+                  endpointProvider().resolvedDeviceAuthorizationEndpoint();
+              DeviceAuthorizationRequest.Builder builder = DeviceAuthorizationRequest.builder();
+              ConfigUtils.scopesAsString(spec().basicConfig().scopes()).ifPresent(builder::scope);
+              Map<String, String> headers = getHeaders();
+              clientAuthenticator().authenticate(builder, headers);
+              DeviceAuthorizationRequest request = builder.build();
+              request.validate();
+              LOGGER.debug(
+                  "[{}] Invoking device auth endpoint: headers: {} body: {}",
+                  spec().runtimeConfig().agentName(),
+                  filterSensitiveData(headers),
+                  request);
+              @SuppressWarnings("resource")
+              RESTClient client = restClient();
+              return client.postForm(
+                  deviceAuthorizationEndpoint.toString(),
+                  request.asFormParameters(),
+                  DeviceAuthorizationResponse.class,
+                  headers,
+                  FlowErrorHandler.INSTANCE);
+            },
+            executor())
+        .whenComplete((resp, error) -> log("device auth endpoint", resp, error));
+  }
+
+  private void log(String endpoint, RESTResponse response, Throwable error) {
     if (LOGGER.isDebugEnabled()) {
       String agentName = spec().runtimeConfig().agentName();
       if (error == null) {
-        LOGGER.debug("[{}] Received response from token endpoint: {}", agentName, response);
+        LOGGER.debug("[{}] Received response from {}: {}", agentName, endpoint, response);
       } else {
-        LOGGER.debug("[{}] Error invoking token endpoint: {}", agentName, error.toString());
+        LOGGER.debug("[{}] Error invoking {}: {}", agentName, endpoint, error.toString());
       }
     }
   }

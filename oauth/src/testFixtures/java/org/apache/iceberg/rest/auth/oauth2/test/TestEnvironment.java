@@ -48,6 +48,7 @@ import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.auth.oauth2.config.AuthorizationCodeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.ConfigUtils;
+import org.apache.iceberg.rest.auth.oauth2.config.DeviceCodeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.PkceTransformation;
 import org.apache.iceberg.rest.auth.oauth2.config.RuntimeConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.TokenExchangeConfig;
@@ -61,6 +62,7 @@ import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableAuthorizationCodeExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableClientCredentialsExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableConfigEndpointExpectation;
+import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableDeviceCodeExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableErrorExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableLoadTableEndpointExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableMetadataDiscoveryExpectation;
@@ -120,6 +122,11 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Value.Default
   public boolean returnRefreshTokens() {
+    return true;
+  }
+
+  @Value.Default
+  public boolean includeDeviceAuthEndpointInDiscoveryMetadata() {
     return true;
   }
 
@@ -221,6 +228,16 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   @Value.Default
+  public URI deviceAuthorizationEndpoint() {
+    return authorizationServerUrl().resolve("protocol/openid-connect/device-auth");
+  }
+
+  @Value.Default
+  public URI deviceVerificationEndpoint() {
+    return authorizationServerUrl().resolve("device");
+  }
+
+  @Value.Default
   public URI discoveryEndpoint() {
     return authorizationServerUrl().resolve(wellKnownPath());
   }
@@ -247,6 +264,8 @@ public abstract class TestEnvironment implements AutoCloseable {
   public OAuth2AgentSpec agentSpec() {
     return OAuth2AgentSpec.builder()
         .basicConfig(basicConfig())
+        .authorizationCodeConfig(authorizationCodeConfig())
+        .deviceCodeConfig(deviceCodeConfig())
         .tokenRefreshConfig(tokenRefreshConfig())
         .tokenExchangeConfig(tokenExchangeConfig())
         .authorizationCodeConfig(authorizationCodeConfig())
@@ -346,6 +365,20 @@ public abstract class TestEnvironment implements AutoCloseable {
   @Value.Default
   public PkceTransformation pkceTransformation() {
     return PkceTransformation.S256;
+  }
+
+  @Value.Default
+  public DeviceCodeConfig deviceCodeConfig() {
+    DeviceCodeConfig.Builder builder =
+        DeviceCodeConfig.builder()
+            .ignoreServerPollInterval(true)
+            .minPollInterval(Duration.ofMillis(10))
+            .pollInterval(Duration.ofMillis(10));
+    if (!discoveryEnabled()) {
+      builder.deviceAuthorizationEndpoint(deviceAuthorizationEndpoint());
+    }
+
+    return builder.build();
   }
 
   @Value.Default
@@ -610,6 +643,7 @@ public abstract class TestEnvironment implements AutoCloseable {
   public void createExpectations() {
     ImmutableClientCredentialsExpectation.of(this).create();
     ImmutableAuthorizationCodeExpectation.of(this).create();
+    ImmutableDeviceCodeExpectation.of(this).create();
     ImmutableTokenExchangeExpectation.of(this).create();
     ImmutableRefreshTokenExpectation.of(this).create();
     createMetadataDiscoveryExpectations();

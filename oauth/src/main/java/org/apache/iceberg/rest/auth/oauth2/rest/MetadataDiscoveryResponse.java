@@ -19,6 +19,7 @@
 package org.apache.iceberg.rest.auth.oauth2.rest;
 
 import java.net.URI;
+import javax.annotation.Nullable;
 import org.apache.iceberg.rest.RESTResponse;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
 import org.immutables.value.Value;
@@ -55,4 +56,12 @@ public abstract class MetadataDiscoveryResponse implements RESTResponse {
    * contain port, path, and query parameter components.
    */
   public abstract URI authorizationEndpoint();
+
+  /**
+   * OPTIONAL. URL of the authorization server's device authorization endpoint.
+   *
+   * @see <a href="https://datatracker.ietf.org/doc/html/rfc8628#section-4">RFC 8628 Section 4</a>
+   */
+  @Nullable
+  public abstract URI deviceAuthorizationEndpoint();
 }

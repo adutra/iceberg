@@ -53,6 +53,17 @@ class TestOAuth2AgentSpec {
                         .clientSecret("s3cr3t")
                         .build()),
             singletonList(
-                "either issuer URL or authorization endpoint must be set if grant type is 'authorization_code' (rest.auth.oauth2.issuer-url / rest.auth.oauth2.auth-code.endpoint)")));
+                "either issuer URL or authorization endpoint must be set if grant type is 'authorization_code' (rest.auth.oauth2.issuer-url / rest.auth.oauth2.auth-code.endpoint)")),
+        Arguments.of(
+            OAuth2AgentSpec.builder()
+                .basicConfig(
+                    BasicConfig.builder()
+                        .grantType(GrantType.DEVICE_CODE)
+                        .tokenEndpoint(URI.create("https://issuer.com/token"))
+                        .clientId("Client1")
+                        .clientSecret("s3cr3t")
+                        .build()),
+            singletonList(
+                "either issuer URL or device authorization endpoint must be set if grant type is 'device_code' (rest.auth.oauth2.issuer-url / rest.auth.oauth2.device-code.endpoint)")));
   }
 }
