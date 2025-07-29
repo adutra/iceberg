@@ -23,25 +23,52 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import javax.annotation.Nullable;
+import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
+import org.apache.iceberg.relocated.com.google.common.collect.Sets;
 import org.apache.iceberg.rest.auth.oauth2.immutables.OAuth2ImmutableStyle;
 import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** A user flow that responds to Device Code flows. */
+/**
+ * A user flow that responds to Device Code flows. This implementation is compatible with unit test
+ * expectations as well as with Keycloak's behavior.
+ */
 @Value.Immutable
 @OAuth2ImmutableStyle
 public abstract class DeviceCodeUserFlow extends UserFlow {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DeviceCodeUserFlow.class);
 
+  private static final Pattern FORM_ACTION_PATTERN =
+      Pattern.compile("<form.*action=\"([^\"]+)\".*>");
+
+  private static final Pattern HIDDEN_CODE_PATTERN =
+      Pattern.compile("<input type=\"hidden\" name=\"code\" value=\"([^\"]+)\">");
+
+  /**
+   * The code that the user should enter on the authorization server's login page to authorize the
+   * client.
+   */
   protected abstract String userCode();
 
   @Override
   public void run() {
     try {
       LOGGER.debug("Starting device code user flow.");
-      enterUserCode(authUrl(), userCode());
+      Set<String> cookies = Sets.newHashSet();
+      URI loginPageUrl = enterUserCode(authUrl(), userCode(), cookies);
+      if (loginPageUrl != null) {
+        var username = userBehavior().requiredUsername();
+        var password = userBehavior().requiredPassword();
+        URI consentPageUrl = login(loginPageUrl, username, password, cookies);
+        authorizeDevice(consentPageUrl, cookies);
+      }
+
       LOGGER.debug("Device code user flow completed.");
     } catch (Exception | AssertionError t) {
       errorListener().accept(t);
@@ -49,19 +76,68 @@ public abstract class DeviceCodeUserFlow extends UserFlow {
   }
 
   /** Emulates user entering provided user code on the authorization server. */
-  private void enterUserCode(URI codePageUrl, String userCode) throws Exception {
+  @Nullable
+  private URI enterUserCode(URI codePageUrl, String userCode, Set<String> cookies)
+      throws Exception {
     LOGGER.debug("Entering user code...");
-    HttpURLConnection codeActionConn = (HttpURLConnection) codePageUrl.toURL().openConnection();
-    if (userBehavior().emulateFailure()) {
-      Map<String, String> data = Map.of("device_user_code", "wrong_code");
-      postForm(codeActionConn, data);
+    // receive device code page and read the cookies
+    getHtmlPage(codePageUrl, cookies);
+    // send device code form to same URL but with POST
+    HttpURLConnection codeActionConn = openConnection(codePageUrl);
+    // Emulate a failure at this step for unit tests only; for integration tests, we'll do it later
+    boolean wrongCode = userBehavior().emulateFailure() && userBehavior().username().isEmpty();
+    Map<String, String> data = Map.of("device_user_code", wrongCode ? "wrong_code" : userCode);
+    postForm(codeActionConn, data, cookies);
+    URI loginUrl = null;
+    if (wrongCode) {
       assertThat(codeActionConn.getResponseCode()).isEqualTo(HttpURLConnection.HTTP_UNAUTHORIZED);
     } else {
-      Map<String, String> data = Map.of("device_user_code", userCode);
-      postForm(codeActionConn, data);
-      assertThat(codeActionConn.getResponseCode()).isEqualTo(HttpURLConnection.HTTP_OK);
+      if (userBehavior().username().isEmpty()) {
+        // Unit tests: expect just a 200 OK
+        assertThat(codeActionConn.getResponseCode()).isEqualTo(HttpURLConnection.HTTP_OK);
+      } else {
+        // Expect a redirect to the login page
+        loginUrl = readRedirectUrl(codeActionConn, cookies);
+      }
     }
 
     codeActionConn.disconnect();
+    return loginUrl;
+  }
+
+  /** Emulates user consenting to authorize device on the authorization server. */
+  private void authorizeDevice(URI consentPageUrl, Set<String> cookies) throws Exception {
+    LOGGER.debug("Authorizing device...");
+    // receive consent page
+    String consentHtml = getHtmlPage(consentPageUrl, cookies);
+    Matcher matcher = FORM_ACTION_PATTERN.matcher(consentHtml);
+    assertThat(matcher.find()).isTrue();
+    URI formAction = URI.create(matcher.group(1));
+    matcher = HIDDEN_CODE_PATTERN.matcher(consentHtml);
+    assertThat(matcher.find()).isTrue();
+    String deviceCode = matcher.group(1);
+    // send consent form
+    URI consentActionUrl =
+        new URI(
+            consentPageUrl.getScheme(),
+            null,
+            consentPageUrl.getHost(),
+            consentPageUrl.getPort(),
+            formAction.getPath(),
+            formAction.getQuery(),
+            null);
+    HttpURLConnection consentActionConn = openConnection(consentActionUrl);
+    // Emulate a failure here for integration tests by denying consent;
+    // this will make Keycloak return 400 (Bad Request) with "access_denied"
+    // error code to the client polling for the token.
+    boolean denyConsent = userBehavior().emulateFailure();
+    Map<String, String> data =
+        denyConsent
+            ? ImmutableMap.of("code", deviceCode, "cancel", "No")
+            : ImmutableMap.of("code", deviceCode, "accept", "Yes");
+    postForm(consentActionConn, data, cookies);
+    // Read the response but discard it, as it points to a static success HTML page
+    readRedirectUrl(consentActionConn, cookies);
+    consentActionConn.disconnect();
   }
 }

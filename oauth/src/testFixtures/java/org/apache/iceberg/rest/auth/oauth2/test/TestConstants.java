@@ -34,8 +34,8 @@ public final class TestConstants {
 
   private TestConstants() {}
 
-  public static final String CLIENT_ID1 = "Client1";
-  public static final String CLIENT_ID2 = "Client2";
+  public static final String CLIENT_ID1 = "Client1"; // Keycloak auth: client_secret_basic
+  public static final String CLIENT_ID2 = "Client2"; // Leycloak auth: none
 
   public static final String CLIENT_SECRET1 = "s3cr3t";
   public static final String CLIENT_SECRET2 = "sEcrEt";

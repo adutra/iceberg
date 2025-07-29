@@ -71,6 +71,7 @@ import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutablePasswordExp
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableRefreshTokenExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.expectation.ImmutableTokenExchangeExpectation;
 import org.apache.iceberg.rest.auth.oauth2.test.server.HttpServer;
+import org.apache.iceberg.rest.auth.oauth2.test.server.InactiveHttpServer;
 import org.apache.iceberg.rest.auth.oauth2.test.server.MockHttpServer;
 import org.apache.iceberg.rest.auth.oauth2.test.user.InteractiveUserEmulator;
 import org.apache.iceberg.rest.auth.oauth2.test.user.UserBehavior;
@@ -113,6 +114,11 @@ public abstract class TestEnvironment implements AutoCloseable {
   }
 
   @Value.Default
+  public boolean unitTest() {
+    return true;
+  }
+
+  @Value.Default
   public boolean privateClient() {
     return true;
   }
@@ -134,12 +140,12 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Value.Default
   public boolean createDefaultExpectations() {
-    return true;
+    return unitTest();
   }
 
   @Value.Lazy
   public HttpServer server() {
-    return new MockHttpServer();
+    return unitTest() ? new MockHttpServer() : InactiveHttpServer.INSTANCE;
   }
 
   @Value.Default
@@ -196,6 +202,8 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Value.Default
   public URI serverRootUrl() {
+    // Note: the default value is for unit tests; integration tests must provide the server root URL
+    // to avoid circular dependencies when creating the TestEnvironment instance
     return server().rootUrl();
   }
 
@@ -329,6 +337,11 @@ public abstract class TestEnvironment implements AutoCloseable {
         .enabled(tokenRefreshEnabled())
         .accessTokenLifespan(accessTokenLifespan())
         .minAccessTokenLifespan(accessTokenLifespan())
+        // safety margin and idle timeout are tailored for integration tests
+        .safetyMargin(Duration.ofSeconds(5))
+        .minRefreshDelay(Duration.ofSeconds(5))
+        .idleTimeout(Duration.ofSeconds(5))
+        .minIdleTimeout(Duration.ofSeconds(5))
         .build();
   }
 
@@ -387,7 +400,7 @@ public abstract class TestEnvironment implements AutoCloseable {
   public DeviceCodeConfig deviceCodeConfig() {
     DeviceCodeConfig.Builder builder =
         DeviceCodeConfig.builder()
-            .ignoreServerPollInterval(true)
+            .ignoreServerPollInterval(unitTest())
             .minPollInterval(Duration.ofMillis(10))
             .pollInterval(Duration.ofMillis(10));
     if (!discoveryEnabled()) {
@@ -559,7 +572,7 @@ public abstract class TestEnvironment implements AutoCloseable {
 
   @Value.Default
   public UserBehavior userBehavior() {
-    return UserBehavior.DEFAULT;
+    return unitTest() ? UserBehavior.UNIT_TESTS : UserBehavior.INTEGRATION_TESTS;
   }
 
   @Value.Default

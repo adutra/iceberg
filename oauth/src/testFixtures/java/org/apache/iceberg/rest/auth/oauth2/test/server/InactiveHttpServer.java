@@ -21,24 +21,27 @@ package org.apache.iceberg.rest.auth.oauth2.test.server;
 import java.net.URI;
 
 /**
- * A simple HTTP server for testing purposes.
+ * A no-op HttpServer implementation that does not support any operations.
  *
- * <p>There are two implementations:
- *
- * <ul>
- *   <li>{@link MockHttpServer} is a mock server that runs in-memory and is used for unit tests. It
- *       uses MockServer under the hood.
- *   <li>{@link InactiveHttpServer} is a no-op server that is used when the tests don't need a mock
- *       HTTP server. This is especially the case for integration tests that run against a real
- *       authorization server.
- * </ul>
+ * <p>This server is used for integration tests, since these tests run against a real authorization
+ * server and do not need a mock server.
  */
-public interface HttpServer extends AutoCloseable {
+public final class InactiveHttpServer implements HttpServer {
 
-  URI rootUrl();
+  public static final InactiveHttpServer INSTANCE = new InactiveHttpServer();
 
-  void reset();
+  private InactiveHttpServer() {}
 
   @Override
-  void close();
+  public URI rootUrl() {
+    throw new UnsupportedOperationException("Cannot get root URL of integration test server.");
+  }
+
+  @Override
+  public void reset() {
+    throw new UnsupportedOperationException("Cannot reset integration test server.");
+  }
+
+  @Override
+  public void close() {}
 }
