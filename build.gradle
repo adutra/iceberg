@@ -1122,6 +1122,20 @@ project(':iceberg-rest-oauth') {
           }
         }
       }
+      longTest(JvmTestSuite) {
+        useJUnitJupiter()
+        dependencies {
+          implementation project()
+          implementation testFixtures(project())
+        }
+        targets {
+          all {
+            testTask.configure {
+              shouldRunAfter(intTest)
+            }
+          }
+        }
+      }
     }
   }
 
@@ -1192,6 +1206,21 @@ project(':iceberg-rest-oauth') {
     intTestImplementation libs.keycloak.admin.client
 
     intTestImplementation libs.slf4j.simple
+
+    longTestImplementation project(':iceberg-core')
+
+    longTestImplementation libs.junit.jupiter
+    longTestImplementation libs.assertj.core
+    longTestImplementation libs.mockito.core
+
+    longTestImplementation libs.auth0.jwt
+
+    longTestImplementation libs.testcontainers
+    longTestImplementation libs.testcontainers.junit.jupiter
+    longTestImplementation libs.testcontainers.keycloak
+    longTestImplementation libs.keycloak.admin.client
+
+    longTestImplementation libs.slf4j.simple
   }
 }
 
