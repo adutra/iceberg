@@ -57,6 +57,14 @@ public enum ClientAuthentication {
    * Credentials in the request body.
    */
   CLIENT_SECRET_POST("client_secret_post"),
+
+  // From JWT assertions (RFC 7523)
+
+  /** Clients that have received a client_secret value create a JWT using an HMAC SHA algorithm. */
+  CLIENT_SECRET_JWT("client_secret_jwt"),
+
+  /** Clients that have registered a public key sign a JWT using that key. */
+  PRIVATE_KEY_JWT("private_key_jwt"),
   ;
 
   private final String canonicalName;
@@ -66,7 +74,11 @@ public enum ClientAuthentication {
   }
 
   public boolean isClientSecret() {
-    return this == CLIENT_SECRET_BASIC || this == CLIENT_SECRET_POST;
+    return this == CLIENT_SECRET_BASIC || this == CLIENT_SECRET_POST || this == CLIENT_SECRET_JWT;
+  }
+
+  public boolean isClientAssertion() {
+    return this == PRIVATE_KEY_JWT || this == CLIENT_SECRET_JWT;
   }
 
   public String getCanonicalName() {

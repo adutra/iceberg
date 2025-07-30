@@ -110,7 +110,8 @@ public abstract class FlowFactory implements AutoCloseable {
 
   @Value.Default
   protected ClientAuthenticator clientAuthenticator() {
-    return ClientAuthenticatorFactory.createAuthenticator(spec().basicConfig());
+    return ClientAuthenticatorFactory.createAuthenticator(
+        spec(), endpointProvider().resolvedTokenEndpoint());
   }
 
   @Value.Default

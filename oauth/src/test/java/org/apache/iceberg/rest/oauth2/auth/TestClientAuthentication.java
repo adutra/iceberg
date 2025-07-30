@@ -55,14 +55,20 @@ class TestClientAuthentication {
         Arguments.of("none", ClientAuthentication.NONE),
         Arguments.of("client_secret_basic", ClientAuthentication.CLIENT_SECRET_BASIC),
         Arguments.of("client_secret_post", ClientAuthentication.CLIENT_SECRET_POST),
+        Arguments.of("client_secret_jwt", ClientAuthentication.CLIENT_SECRET_JWT),
+        Arguments.of("private_key_jwt", ClientAuthentication.PRIVATE_KEY_JWT),
         // mixed case
         Arguments.of("None", ClientAuthentication.NONE),
         Arguments.of("Client_Secret_Basic", ClientAuthentication.CLIENT_SECRET_BASIC),
         Arguments.of("Client_Secret_Post", ClientAuthentication.CLIENT_SECRET_POST),
+        Arguments.of("Client_Secret_Jwt", ClientAuthentication.CLIENT_SECRET_JWT),
+        Arguments.of("Private_Key_Jwt", ClientAuthentication.PRIVATE_KEY_JWT),
         // uppercase
         Arguments.of("NONE", ClientAuthentication.NONE),
         Arguments.of("CLIENT_SECRET_BASIC", ClientAuthentication.CLIENT_SECRET_BASIC),
-        Arguments.of("CLIENT_SECRET_POST", ClientAuthentication.CLIENT_SECRET_POST));
+        Arguments.of("CLIENT_SECRET_POST", ClientAuthentication.CLIENT_SECRET_POST),
+        Arguments.of("CLIENT_SECRET_JWT", ClientAuthentication.CLIENT_SECRET_JWT),
+        Arguments.of("PRIVATE_KEY_JWT", ClientAuthentication.PRIVATE_KEY_JWT));
   }
 
   @ParameterizedTest
@@ -76,6 +82,24 @@ class TestClientAuthentication {
     return Stream.of(
         Arguments.of(ClientAuthentication.NONE, false),
         Arguments.of(ClientAuthentication.CLIENT_SECRET_BASIC, true),
-        Arguments.of(ClientAuthentication.CLIENT_SECRET_POST, true));
+        Arguments.of(ClientAuthentication.CLIENT_SECRET_POST, true),
+        Arguments.of(ClientAuthentication.CLIENT_SECRET_JWT, true),
+        Arguments.of(ClientAuthentication.PRIVATE_KEY_JWT, false));
+  }
+
+  @ParameterizedTest
+  @MethodSource("isClientAssertionTestCases")
+  void testIsClientAssertion(
+      ClientAuthentication clientAuthentication, boolean expectedIsClientAssertion) {
+    assertThat(clientAuthentication.isClientAssertion()).isEqualTo(expectedIsClientAssertion);
+  }
+
+  static Stream<Arguments> isClientAssertionTestCases() {
+    return Stream.of(
+        Arguments.of(ClientAuthentication.NONE, false),
+        Arguments.of(ClientAuthentication.CLIENT_SECRET_BASIC, false),
+        Arguments.of(ClientAuthentication.CLIENT_SECRET_POST, false),
+        Arguments.of(ClientAuthentication.CLIENT_SECRET_JWT, true),
+        Arguments.of(ClientAuthentication.PRIVATE_KEY_JWT, true));
   }
 }

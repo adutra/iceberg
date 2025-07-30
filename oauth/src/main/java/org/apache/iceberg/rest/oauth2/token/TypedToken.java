@@ -23,9 +23,11 @@ import org.apache.iceberg.rest.oauth2.immutables.OAuth2ImmutableStyle;
 import org.immutables.value.Value;
 
 /**
- * Represents a token with a specific type URI. Such tokens are used in the Token Exchange flow.
+ * Represents a token with a specific type URI. Such tokens are used in the Token Exchange flow and
+ * for client assertions.
  *
  * @see <a href="https://datatracker.ietf.org/doc/html/rfc8693">RFC 8693</a>
+ * @see <a href="https://datatracker.ietf.org/doc/html/rfc7523">RFC 7523</a>
  */
 @Value.Immutable
 @OAuth2ImmutableStyle
@@ -50,6 +52,10 @@ public interface TypedToken extends Token {
 
   /** Indicates that the token is a JWT. */
   URI URN_JWT = URI.create("urn:ietf:params:oauth:token-type:jwt");
+
+  // URIs defined in https://datatracker.ietf.org/doc/html/rfc7523#section-2.2
+
+  URI URN_JWT_BEARER = URI.create("urn:ietf:params:oauth:client-assertion-type:jwt-bearer");
 
   /** The type of the token. */
   URI tokenType();

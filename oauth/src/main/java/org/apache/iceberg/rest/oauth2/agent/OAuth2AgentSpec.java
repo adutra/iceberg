@@ -25,8 +25,10 @@ import org.apache.iceberg.relocated.com.google.common.base.Preconditions;
 import org.apache.iceberg.rest.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.oauth2.OAuth2Properties.AuthorizationCode;
 import org.apache.iceberg.rest.oauth2.OAuth2Properties.DeviceCode;
+import org.apache.iceberg.rest.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.oauth2.config.AuthorizationCodeConfig;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.oauth2.config.ClientAssertionConfig;
 import org.apache.iceberg.rest.oauth2.config.DeviceCodeConfig;
 import org.apache.iceberg.rest.oauth2.config.ResourceOwnerPasswordConfig;
 import org.apache.iceberg.rest.oauth2.config.RuntimeConfig;
@@ -78,6 +80,15 @@ public interface OAuth2AgentSpec {
   @Value.Default
   default TokenExchangeConfig tokenExchangeConfig() {
     return TokenExchangeConfig.DEFAULT;
+  }
+
+  /**
+   * The client JWT assertion configuration. Required when the client authentication method is
+   * {@link ClientAuthentication#PRIVATE_KEY_JWT} or {@link ClientAuthentication#CLIENT_SECRET_JWT}.
+   */
+  @Value.Default
+  default ClientAssertionConfig clientAssertionConfig() {
+    return ClientAssertionConfig.DEFAULT;
   }
 
   /** The runtime configuration. Optional. */
@@ -136,6 +147,7 @@ public interface OAuth2AgentSpec {
         .deviceCodeConfig(deviceCodeConfig().merge(properties))
         .tokenRefreshConfig(tokenRefreshConfig().merge(properties))
         .tokenExchangeConfig(tokenExchangeConfig().merge(properties))
+        .clientAssertionConfig(clientAssertionConfig().merge(properties))
         .runtimeConfig(runtimeConfig().merge(properties))
         .build();
   }
@@ -167,6 +179,7 @@ public interface OAuth2AgentSpec {
           .deviceCodeConfig(DeviceCodeConfig.builder().from(properties).build())
           .tokenRefreshConfig(TokenRefreshConfig.builder().from(properties).build())
           .tokenExchangeConfig(TokenExchangeConfig.builder().from(properties).build())
+          .clientAssertionConfig(ClientAssertionConfig.builder().from(properties).build())
           .runtimeConfig(RuntimeConfig.builder().from(properties).build());
     }
 
@@ -187,6 +200,9 @@ public interface OAuth2AgentSpec {
 
     @CanIgnoreReturnValue
     Builder tokenExchangeConfig(TokenExchangeConfig tokenExchangeConfig);
+
+    @CanIgnoreReturnValue
+    Builder clientAssertionConfig(ClientAssertionConfig clientAssertionConfig);
 
     @CanIgnoreReturnValue
     Builder runtimeConfig(RuntimeConfig runtimeConfig);

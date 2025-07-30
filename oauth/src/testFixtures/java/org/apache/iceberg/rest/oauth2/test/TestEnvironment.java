@@ -47,6 +47,7 @@ import org.apache.iceberg.rest.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.oauth2.config.AuthorizationCodeConfig;
 import org.apache.iceberg.rest.oauth2.config.BasicConfig;
+import org.apache.iceberg.rest.oauth2.config.ClientAssertionConfig;
 import org.apache.iceberg.rest.oauth2.config.ConfigUtils;
 import org.apache.iceberg.rest.oauth2.config.DeviceCodeConfig;
 import org.apache.iceberg.rest.oauth2.config.Dialect;
@@ -288,6 +289,7 @@ public abstract class TestEnvironment implements AutoCloseable {
         .deviceCodeConfig(deviceCodeConfig())
         .tokenRefreshConfig(tokenRefreshConfig())
         .tokenExchangeConfig(tokenExchangeConfig())
+        .clientAssertionConfig(clientAssertionConfig())
         .runtimeConfig(runtimeConfig())
         .build();
   }
@@ -555,6 +557,11 @@ public abstract class TestEnvironment implements AutoCloseable {
   @Nullable
   public URI resource() {
     return TestConstants.RESOURCE;
+  }
+
+  @Value.Default
+  public ClientAssertionConfig clientAssertionConfig() {
+    return ClientAssertionConfig.DEFAULT;
   }
 
   @Value.Default
