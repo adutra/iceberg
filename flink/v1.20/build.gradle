@@ -170,6 +170,7 @@ project(":iceberg-flink:iceberg-flink-runtime-${flinkMajorVersion}") {
     implementation(project(':iceberg-nessie')) {
       exclude group: 'com.google.code.findbugs', module: 'jsr305'
     }
+    implementation project(':iceberg-rest-oauth')
 
     // for dropwizard histogram metrics implementation
     implementation libs.flink120.metrics.dropwizard
@@ -250,6 +251,7 @@ project(":iceberg-flink:iceberg-flink-runtime-${flinkMajorVersion}") {
     relocate 'org.threeten.extra', 'org.apache.iceberg.shaded.org.threeten.extra'
     relocate 'org.apache.hc.client5', 'org.apache.iceberg.shaded.org.apache.hc.client5'
     relocate 'org.apache.hc.core5', 'org.apache.iceberg.shaded.org.apache.hc.core5'
+    relocate 'com.auth0.jwt', 'org.apache.iceberg.shaded.com.auth0.jwt'
 
     archiveClassifier.set(null)
   }
