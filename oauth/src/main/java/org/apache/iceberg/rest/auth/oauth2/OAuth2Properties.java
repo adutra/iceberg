@@ -19,6 +19,8 @@
 package org.apache.iceberg.rest.auth.oauth2;
 
 import org.apache.iceberg.rest.auth.OAuth2Manager;
+import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthentication;
+import org.apache.iceberg.rest.auth.oauth2.auth.JwtSigningAlgorithm;
 import org.apache.iceberg.rest.auth.oauth2.config.Dialect;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantCommonNames;
 
@@ -490,6 +492,58 @@ public final class OAuth2Properties {
      * with the client providing a logical name for the target service.
      */
     public static final String AUDIENCE = TokenExchange.PREFIX + "audience";
+  }
+
+  /**
+   * Configuration properties for JWT client assertion as specified in <a
+   * href="https://datatracker.ietf.org/doc/html/rfc7523">JSON Web Token (JWT) Profile for OAuth 2.0
+   * Client Authentication and Authorization Grants</a>.
+   *
+   * <p>These properties allow the client to authenticate using the {@code client_secret_jwt} or
+   * {@code private_key_jwt} authentication methods.
+   */
+  public static final class ClientAssertion {
+
+    public static final String PREFIX = OAuth2Properties.PREFIX + "client-assertion.jwt.";
+
+    /** The issuer of the client assertion JWT. Optional. The default is the client ID. */
+    public static final String ISSUER = PREFIX + "issuer";
+
+    /** The subject of the client assertion JWT. Optional. The default is the client ID. */
+    public static final String SUBJECT = PREFIX + "subject";
+
+    /** The audience of the client assertion JWT. Optional. The default is the token endpoint. */
+    public static final String AUDIENCE = PREFIX + "audience";
+
+    /** The expiration time of the client assertion JWT. Optional. The default is 5 minutes. */
+    public static final String TOKEN_LIFESPAN = PREFIX + "token-lifespan";
+
+    /**
+     * The signing algorithm to use for the client assertion JWT. Optional. The default is {@link
+     * JwtSigningAlgorithm#HMAC_SHA512} if the authentication method is {@link
+     * ClientAuthentication#CLIENT_SECRET_JWT}, or {@link JwtSigningAlgorithm#RSA_SHA512} if the
+     * authentication method is {@link ClientAuthentication#PRIVATE_KEY_JWT}.
+     *
+     * <p>Algorithm names must match either the JWS name or the JCA name of the algorithm.
+     *
+     * @see <a href="https://datatracker.ietf.org/doc/html/rfc7518#section-3.1">RFC 7518 Section
+     *     3.1</a>
+     */
+    public static final String ALGORITHM = PREFIX + "algorithm";
+
+    /**
+     * The path on the local filesystem to the private key to use for signing the client assertion
+     * JWT. Required if the authentication method is {@link ClientAuthentication#PRIVATE_KEY_JWT}.
+     * The file must be in PEM format; it may contain a private key, or a private key and a
+     * certificate chain. Only the private key is used.
+     */
+    public static final String PRIVATE_KEY = PREFIX + "private-key";
+
+    /**
+     * Extra claims to include in the client assertion JWT. This is a prefix property, and multiple
+     * values can be set, each with a different key and value.
+     */
+    public static final String EXTRA_CLAIMS_PREFIX = PREFIX + "extra-claims.";
   }
 
   /**

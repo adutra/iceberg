@@ -26,17 +26,22 @@ import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import org.apache.iceberg.rest.auth.oauth2.OAuth2Properties;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthentication;
+import org.apache.iceberg.rest.auth.oauth2.auth.JwtSigningAlgorithm;
+import org.apache.iceberg.rest.auth.oauth2.config.ClientAssertionConfig;
 import org.apache.iceberg.rest.auth.oauth2.config.PkceTransformation;
 import org.apache.iceberg.rest.auth.oauth2.flow.OAuth2Exception;
 import org.apache.iceberg.rest.auth.oauth2.grant.GrantType;
 import org.apache.iceberg.rest.auth.oauth2.test.ImmutableTestEnvironment;
 import org.apache.iceberg.rest.auth.oauth2.test.TestConstants;
 import org.apache.iceberg.rest.auth.oauth2.test.TestEnvironment;
+import org.apache.iceberg.rest.auth.oauth2.test.TestPemUtils;
 import org.apache.iceberg.rest.auth.oauth2.test.container.KeycloakTestEnvironment;
 import org.apache.iceberg.rest.auth.oauth2.test.user.UserBehavior;
 import org.apache.iceberg.rest.auth.oauth2.token.AccessToken;
@@ -46,8 +51,10 @@ import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -56,7 +63,15 @@ import org.junit.jupiter.params.provider.EnumSource;
 @ExtendWith(SoftAssertionsExtension.class)
 public class ITOAuth2AgentKeycloak {
 
+  private static Path privateKeyPath;
+
   @InjectSoftAssertions private SoftAssertions soft;
+
+  @BeforeAll
+  static void copyPrivateKeyFile(@TempDir Path tempDir) {
+    privateKeyPath = Paths.get(tempDir.toString(), "key.pem");
+    TestPemUtils.copyPrivateKey(privateKeyPath);
+  }
 
   @ParameterizedTest
   @EnumSource(
@@ -118,6 +133,48 @@ public class ITOAuth2AgentKeycloak {
         OAuth2Agent agent = env.createAgent()) {
       assertAgent(
           agent, TestConstants.CLIENT_ID2, initialGrantType != GrantType.CLIENT_CREDENTIALS);
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = GrantType.class,
+      names = {"CLIENT_CREDENTIALS", "PASSWORD", "AUTHORIZATION_CODE", "DEVICE_CODE"})
+  void clientSecretJwt(GrantType initialGrantType, ImmutableTestEnvironment.Builder envBuilder)
+      throws ExecutionException, InterruptedException {
+    try (TestEnvironment env =
+            envBuilder
+                .grantType(initialGrantType)
+                .clientId(TestConstants.CLIENT_ID3)
+                .clientSecret(TestConstants.CLIENT_SECRET3)
+                .clientAuthentication(ClientAuthentication.CLIENT_SECRET_JWT)
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      assertAgent(
+          agent, TestConstants.CLIENT_ID3, initialGrantType != GrantType.CLIENT_CREDENTIALS);
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = GrantType.class,
+      names = {"CLIENT_CREDENTIALS", "PASSWORD", "AUTHORIZATION_CODE", "DEVICE_CODE"})
+  void privateKeyJwt(GrantType initialGrantType, ImmutableTestEnvironment.Builder envBuilder)
+      throws ExecutionException, InterruptedException {
+    try (TestEnvironment env =
+            envBuilder
+                .grantType(initialGrantType)
+                .clientId(TestConstants.CLIENT_ID4)
+                .clientAuthentication(ClientAuthentication.PRIVATE_KEY_JWT)
+                .clientAssertionConfig(
+                    ClientAssertionConfig.builder()
+                        .algorithm(JwtSigningAlgorithm.RSA_SHA256)
+                        .privateKey(privateKeyPath)
+                        .build())
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      assertAgent(
+          agent, TestConstants.CLIENT_ID4, initialGrantType != GrantType.CLIENT_CREDENTIALS);
     }
   }
 
@@ -251,6 +308,75 @@ public class ITOAuth2AgentKeycloak {
                 .build();
         OAuth2Agent agent = env.createAgent()) {
       assertAgent(agent, TestConstants.CLIENT_ID1, expectRefreshToken);
+    }
+  }
+
+  /**
+   * Tests a delegation scenario where both the subject and actor tokens are dynamically obtained,
+   * with the subject token agent using private key JWT authentication.
+   *
+   * <p>This test also tests the copying of agents, including subject and actor token agents.
+   * Refresh tokens are requested except for the client credentials grant where they are not
+   * supported.
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = GrantType.class,
+      names = {"CLIENT_CREDENTIALS", "PASSWORD", "AUTHORIZATION_CODE", "DEVICE_CODE"})
+  void delegation4(GrantType subjectGrantType, ImmutableTestEnvironment.Builder envBuilder)
+      throws ExecutionException, InterruptedException {
+    boolean expectRefreshToken = subjectGrantType != GrantType.CLIENT_CREDENTIALS;
+    try (TestEnvironment env =
+            envBuilder
+                .grantType(TOKEN_EXCHANGE)
+                .clientId(TestConstants.CLIENT_ID4)
+                .clientAuthentication(ClientAuthentication.PRIVATE_KEY_JWT)
+                .clientAssertionConfig(
+                    ClientAssertionConfig.builder()
+                        .algorithm(JwtSigningAlgorithm.RSA_SHA256)
+                        .privateKey(privateKeyPath)
+                        .build())
+                .requestedTokenType(
+                    expectRefreshToken ? TypedToken.URN_REFRESH_TOKEN : TypedToken.URN_ACCESS_TOKEN)
+                .subjectGrantType(subjectGrantType)
+                .subjectTokenConfig(
+                    Map.of(
+                        OAuth2Properties.Basic.GRANT_TYPE,
+                        subjectGrantType.name(),
+                        OAuth2Properties.Basic.SCOPE,
+                        TestConstants.SCOPE1,
+                        OAuth2Properties.Basic.CLIENT_ID,
+                        TestConstants.CLIENT_ID4,
+                        OAuth2Properties.Basic.CLIENT_AUTH,
+                        ClientAuthentication.PRIVATE_KEY_JWT.name(),
+                        OAuth2Properties.ClientAssertion.PRIVATE_KEY,
+                        privateKeyPath.toString(),
+                        OAuth2Properties.ClientAssertion.ALGORITHM,
+                        JwtSigningAlgorithm.RSA_SHA256.name()))
+                .actorTokenConfig(
+                    Map.of(
+                        OAuth2Properties.Basic.GRANT_TYPE,
+                        GrantType.CLIENT_CREDENTIALS.name(),
+                        OAuth2Properties.Basic.SCOPE,
+                        TestConstants.SCOPE1,
+                        OAuth2Properties.Basic.CLIENT_ID,
+                        TestConstants.CLIENT_ID1,
+                        OAuth2Properties.Basic.CLIENT_SECRET,
+                        TestConstants.CLIENT_SECRET1,
+                        OAuth2Properties.Basic.CLIENT_AUTH,
+                        ClientAuthentication.CLIENT_SECRET_BASIC.name()))
+                .build();
+        OAuth2Agent agent = env.createAgent()) {
+      assertAgent(agent, TestConstants.CLIENT_ID4, expectRefreshToken);
+      // test copy before and after close
+      try (OAuth2Agent agent2 = agent.copy()) {
+        assertAgent(agent2, TestConstants.CLIENT_ID4, expectRefreshToken);
+      }
+
+      agent.close();
+      try (OAuth2Agent agent3 = agent.copy()) {
+        assertAgent(agent3, TestConstants.CLIENT_ID4, expectRefreshToken);
+      }
     }
   }
 

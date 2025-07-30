@@ -20,6 +20,7 @@ package org.apache.iceberg.rest.auth.oauth2.test;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
@@ -34,11 +35,14 @@ public final class TestConstants {
 
   private TestConstants() {}
 
-  public static final String CLIENT_ID1 = "Client1"; // Keycloak auth: client_secret_basic
-  public static final String CLIENT_ID2 = "Client2"; // Leycloak auth: none
+  public static final String CLIENT_ID1 = "Client1"; // client_secret_basic
+  public static final String CLIENT_ID2 = "Client2"; // none
+  public static final String CLIENT_ID3 = "Client3"; // client_secret_jwt
+  public static final String CLIENT_ID4 = "Client4"; // private_key_jwt
 
   public static final String CLIENT_SECRET1 = "s3cr3t";
   public static final String CLIENT_SECRET2 = "sEcrEt";
+  public static final String CLIENT_SECRET3 = "S3CR3T";
 
   public static final String USERNAME = "Alice";
   public static final String PASSWORD = "s3cr3t";
@@ -55,6 +59,8 @@ public final class TestConstants {
           .encodeToString((CLIENT_ID2 + ":" + CLIENT_SECRET2).getBytes(StandardCharsets.UTF_8));
 
   public static final Instant NOW = Instant.parse("2025-01-01T00:00:00Z");
+
+  public static final Clock CLOCK = new TestClock(TestConstants.NOW);
 
   public static final int ACCESS_TOKEN_EXPIRES_IN_SECONDS = 3600;
   public static final Instant ACCESS_TOKEN_EXPIRATION_TIME =

@@ -32,6 +32,7 @@ import org.apache.iceberg.relocated.com.google.common.collect.ImmutableList;
 import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.rest.auth.oauth2.auth.ClientAuthentication;
 import org.apache.iceberg.rest.auth.oauth2.test.TestConstants;
+import org.apache.iceberg.rest.auth.oauth2.test.TestPemUtils;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.representations.idm.ClientRepresentation;
@@ -92,6 +93,16 @@ public class KeycloakContainer extends ExtendableKeycloakContainer<KeycloakConta
           TestConstants.CLIENT_SECRET1,
           ClientAuthentication.CLIENT_SECRET_BASIC);
       createClient(master, TestConstants.CLIENT_ID2, null, ClientAuthentication.NONE);
+      createClient(
+          master,
+          TestConstants.CLIENT_ID3,
+          TestConstants.CLIENT_SECRET3,
+          ClientAuthentication.CLIENT_SECRET_JWT);
+      createClient(
+          master,
+          TestConstants.CLIENT_ID4,
+          TestPemUtils.encodedSelfSignedCertificate(TestConstants.CLIENT_ID4),
+          ClientAuthentication.PRIVATE_KEY_JWT);
     }
   }
 
@@ -179,6 +190,14 @@ public class KeycloakContainer extends ExtendableKeycloakContainer<KeycloakConta
         case CLIENT_SECRET_POST:
           client.setPublicClient(false);
           client.setSecret(clientSecret);
+          break;
+        case CLIENT_SECRET_JWT:
+          client.setSecret(clientSecret);
+          client.setClientAuthenticatorType("client-secret-jwt");
+          break;
+        case PRIVATE_KEY_JWT:
+          attributes.put("jwt.credential.certificate", clientSecret);
+          client.setClientAuthenticatorType("client-jwt");
           break;
         default:
       }

@@ -18,35 +18,52 @@
  */
 package org.apache.iceberg.rest.auth.oauth2.auth;
 
-import org.apache.iceberg.rest.auth.oauth2.config.BasicConfig;
+import java.net.URI;
+import org.apache.iceberg.rest.auth.oauth2.agent.OAuth2AgentSpec;
 import org.apache.iceberg.rest.auth.oauth2.config.Dialect;
 
 public final class ClientAuthenticatorFactory {
 
   private ClientAuthenticatorFactory() {}
 
-  public static ClientAuthenticator createAuthenticator(BasicConfig spec) {
-    if (spec.dialect() == Dialect.ICEBERG_REST || spec.token().isPresent()) {
+  public static ClientAuthenticator createAuthenticator(OAuth2AgentSpec spec, URI tokenEndpoint) {
+    if (spec.basicConfig().dialect() == Dialect.ICEBERG_REST
+        || spec.basicConfig().token().isPresent()) {
       return ImmutableIcebergClientAuthenticator.builder()
-          .clientId(spec.clientId())
-          .clientSecret(spec.clientSecret())
+          .clientId(spec.basicConfig().clientId())
+          .clientSecret(spec.basicConfig().clientSecret())
           .build();
     } else {
-      ClientAuthentication method = spec.clientAuthentication();
+      ClientAuthentication method = spec.basicConfig().clientAuthentication();
       switch (method) {
         case NONE:
           return ImmutablePublicClientAuthenticator.builder()
-              .clientId(spec.clientId().orElseThrow())
+              .clientId(spec.basicConfig().clientId().orElseThrow())
               .build();
         case CLIENT_SECRET_BASIC:
           return ImmutableClientSecretBasicAuthenticator.builder()
-              .clientId(spec.clientId().orElseThrow())
-              .clientSecret(spec.clientSecret().orElseThrow())
+              .clientId(spec.basicConfig().clientId().orElseThrow())
+              .clientSecret(spec.basicConfig().clientSecret().orElseThrow())
               .build();
         case CLIENT_SECRET_POST:
           return ImmutableClientSecretPostAuthenticator.builder()
-              .clientId(spec.clientId().orElseThrow())
-              .clientSecret(spec.clientSecret().orElseThrow())
+              .clientId(spec.basicConfig().clientId().orElseThrow())
+              .clientSecret(spec.basicConfig().clientSecret().orElseThrow())
+              .build();
+        case CLIENT_SECRET_JWT:
+          return ImmutableClientSecretJwtAuthenticator.builder()
+              .clientId(spec.basicConfig().clientId().orElseThrow())
+              .clientSecret(spec.basicConfig().clientSecret().orElseThrow())
+              .clientAssertionConfig(spec.clientAssertionConfig())
+              .tokenEndpoint(tokenEndpoint)
+              .clock(spec.runtimeConfig().clock())
+              .build();
+        case PRIVATE_KEY_JWT:
+          return ImmutablePrivateKeyJwtClientAuthenticator.builder()
+              .clientId(spec.basicConfig().clientId().orElseThrow())
+              .clientAssertionConfig(spec.clientAssertionConfig())
+              .tokenEndpoint(tokenEndpoint)
+              .clock(spec.runtimeConfig().clock())
               .build();
         default:
           throw new IllegalArgumentException("Unsupported client authentication method: " + method);

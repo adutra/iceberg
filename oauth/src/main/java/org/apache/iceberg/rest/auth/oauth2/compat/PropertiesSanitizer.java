@@ -37,7 +37,9 @@ public final class PropertiesSanitizer {
           OAuth2Properties.Basic.CLIENT_ID,
           OAuth2Properties.Basic.CLIENT_SECRET,
           OAuth2Properties.ResourceOwnerPassword.USERNAME,
-          OAuth2Properties.ResourceOwnerPassword.PASSWORD);
+          OAuth2Properties.ResourceOwnerPassword.PASSWORD,
+          OAuth2Properties.ClientAssertion.ALGORITHM,
+          OAuth2Properties.ClientAssertion.PRIVATE_KEY);
 
   private static final Logger LOGGER = LoggerFactory.getLogger(PropertiesSanitizer.class);
 
