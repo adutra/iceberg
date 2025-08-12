@@ -1,0 +1,66 @@
+/*
+ *
+ *  * Licensed to the Apache Software Foundation (ASF) under one
+ *  * or more contributor license agreements.  See the NOTICE file
+ *  * distributed with this work for additional information
+ *  * regarding copyright ownership.  The ASF licenses this file
+ *  * to you under the Apache License, Version 2.0 (the
+ *  * "License"); you may not use this file except in compliance
+ *  * with the License.  You may obtain a copy of the License at
+ *  *
+ *  *   http://www.apache.org/licenses/LICENSE-2.0
+ *  *
+ *  * Unless required by applicable law or agreed to in writing,
+ *  * software distributed under the License is distributed on an
+ *  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  * KIND, either express or implied.  See the License for the
+ *  * specific language governing permissions and limitations
+ *  * under the License.
+ *
+ */
+
+configurations {
+  docs {
+    visible = false
+    canBeConsumed = false
+    canBeResolved = true
+  }
+}
+
+dependencies {
+  docs 'com.thoughtworks.qdox:qdox:2.2.0'
+}
+
+sourceSets {
+  docs {
+    compileClasspath += configurations.docs
+    runtimeClasspath += configurations.docs
+  }
+}
+
+tasks.register('generateDocs', JavaExec) {
+  group = 'documentation'
+  description = 'Generates configuration documentation from OAuth2Properties'
+  mainClass = 'org.apache.iceberg.rest.auth.oauth2.docs.DocumentationGenerator'
+  classpath = configurations.docs + sourceSets.docs.runtimeClasspath
+
+  def inputFile = project.file('src/main/java/org/apache/iceberg/rest/auth/oauth2/OAuth2Properties.java')
+  def outputFile = project.layout.buildDirectory.file('docs/configuration/configuration.md').get().asFile
+
+  def headerFile = sourceSets.docs.resources.singleFile
+  def header = headerFile.text
+
+  inputs.files inputFile, headerFile
+  outputs.file outputFile
+
+  args inputFile.absolutePath,
+       'org.apache.iceberg.rest.auth.oauth2.OAuth2Properties',
+       header,
+       outputFile.absolutePath
+
+  doFirst {
+    outputFile.parentFile.mkdirs()
+  }
+}
+
+publish.dependsOn generateDocs
