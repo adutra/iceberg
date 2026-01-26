@@ -23,7 +23,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -110,7 +109,9 @@ public abstract class S3V4RestSignerClient
 
   @Value.Default
   public Supplier<Map<String, String>> requestPropertiesSupplier() {
-    return Collections::emptyMap;
+    return () ->
+        PropertyUtil.propertiesWithPrefix(
+            properties(), RESTCatalogProperties.SIGNER_PROPERTIES_PREFIX);
   }
 
   @Value.Lazy

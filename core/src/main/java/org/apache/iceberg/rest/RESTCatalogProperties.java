@@ -72,4 +72,11 @@ public final class RESTCatalogProperties {
    * must be set.
    */
   public static final String SIGNER_ENDPOINT = "signer.endpoint";
+
+  /**
+   * Prefix for properties that should be passed to the remote signer in every signing request.
+   * Properties with this prefix will have the prefix stripped and be included in the {@code
+   * properties} field of the signing request.
+   */
+  public static final String SIGNER_PROPERTIES_PREFIX = "signer.properties.";
 }

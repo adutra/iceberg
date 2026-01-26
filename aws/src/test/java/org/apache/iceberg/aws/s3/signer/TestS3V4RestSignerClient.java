@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.relocated.com.google.common.collect.ImmutableMap;
 import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.AuthProperties;
@@ -243,5 +244,36 @@ class TestS3V4RestSignerClient {
             Map.of(CatalogProperties.URI, "https://catalog.com"),
             "https://catalog.com",
             "https://catalog.com/" + S3V4RestSignerClient.S3_SIGNER_DEFAULT_ENDPOINT));
+  }
+
+  @ParameterizedTest
+  @MethodSource("validRequestProperties")
+  void requestProperties(Map<String, String> input, Map<String, String> expected) throws Exception {
+    Map<String, String> properties =
+        ImmutableMap.<String, String>builder()
+            .put(RESTCatalogProperties.SIGNER_URI, "https://signer.com")
+            .putAll(input)
+            .build();
+
+    try (S3V4RestSignerClient client =
+        ImmutableS3V4RestSignerClient.builder().properties(properties).build()) {
+      Map<String, String> signerProperties = client.requestPropertiesSupplier().get();
+      assertThat(signerProperties).isEqualTo(expected);
+    }
+  }
+
+  static Stream<Arguments> validRequestProperties() {
+    return Stream.of(
+        Arguments.of(Map.of(), Map.of()),
+        Arguments.of(
+            Map.of(RESTCatalogProperties.SIGNER_PROPERTIES_PREFIX + "key1", "value1"),
+            Map.of("key1", "value1")),
+        Arguments.of(
+            Map.of(
+                RESTCatalogProperties.SIGNER_PROPERTIES_PREFIX + "key1",
+                "value1",
+                RESTCatalogProperties.SIGNER_PROPERTIES_PREFIX + "key2",
+                "value2"),
+            Map.of("key1", "value1", "key2", "value2")));
   }
 }
