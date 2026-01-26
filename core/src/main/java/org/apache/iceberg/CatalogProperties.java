@@ -173,16 +173,4 @@ public class CatalogProperties {
       "org.apache.iceberg.azure.keymanagement.AzureKeyManagementClient";
   public static final String ENCRYPTION_KMS_IMPL_GCP =
       "org.apache.iceberg.gcp.GcpKeyManagementClient";
-
-  /**
-   * The base URI of the remote signer endpoint. Optional, defaults to {@linkplain #URI the base URI
-   * of the REST catalog server}.
-   */
-  public static final String SIGNER_URI = "signer.uri";
-
-  /**
-   * The endpoint path of the remote signer endpoint. If remote signing has been requested, this
-   * must be set.
-   */
-  public static final String SIGNER_ENDPOINT = "signer.endpoint";
 }
