@@ -339,10 +339,17 @@ public class TestResourcePaths {
 
   @Test
   public void testRemoteSign() {
-    TableIdentifier tableId = TableIdentifier.of("ns", "table");
-    assertThat(withPrefix.remoteSign(tableId, "s3"))
-        .isEqualTo("v1/ws/catalog/namespaces/ns/tables/table/sign/s3");
-    assertThat(withoutPrefix.remoteSign(tableId, "s3"))
-        .isEqualTo("v1/namespaces/ns/tables/table/sign/s3");
+    TableIdentifier tableId = TableIdentifier.of("test_namespace", "test_table");
+    assertThat(withPrefix.remoteSign(tableId))
+        .isEqualTo("v1/ws/catalog/namespaces/test_namespace/tables/test_table/sign");
+    assertThat(withoutPrefix.remoteSign(tableId))
+        .isEqualTo("v1/namespaces/test_namespace/tables/test_table/sign");
+
+    // Test with different identifiers
+    TableIdentifier complexId = TableIdentifier.of(Namespace.of("db", "schema"), "my_table");
+    assertThat(withPrefix.remoteSign(complexId))
+        .isEqualTo("v1/ws/catalog/namespaces/db%1Fschema/tables/my_table/sign");
+    assertThat(withoutPrefix.remoteSign(complexId))
+        .isEqualTo("v1/namespaces/db%1Fschema/tables/my_table/sign");
   }
 }

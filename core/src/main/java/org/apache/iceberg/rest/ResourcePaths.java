@@ -36,7 +36,7 @@ public class ResourcePaths {
   public static final String V1_TABLE_CREDENTIALS =
       "/v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials";
   public static final String V1_TABLE_REMOTE_SIGN =
-      "/v1/{prefix}/namespaces/{namespace}/tables/{table}/sign/{provider}";
+      "/v1/{prefix}/namespaces/{namespace}/tables/{table}/sign";
   public static final String V1_TABLE_REGISTER = "/v1/{prefix}/namespaces/{namespace}/register";
   public static final String V1_TABLE_METRICS =
       "/v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics";
@@ -132,16 +132,15 @@ public class ResourcePaths {
         "metrics");
   }
 
-  public String remoteSign(TableIdentifier ident, String provider) {
+  public String remoteSign(TableIdentifier identifier) {
     return SLASH.join(
         "v1",
         prefix,
         "namespaces",
-        pathEncode(ident.namespace()),
+        pathEncode(identifier.namespace()),
         "tables",
-        RESTUtil.encodeString(ident.name()),
-        "sign",
-        provider);
+        RESTUtil.encodeString(identifier.name()),
+        "sign");
   }
 
   public String commitTransaction() {

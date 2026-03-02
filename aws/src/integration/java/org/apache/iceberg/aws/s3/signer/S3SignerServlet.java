@@ -54,7 +54,7 @@ public class S3SignerServlet extends RemoteSignerServlet {
           Arrays.asList("range", "x-amz-date", "amz-sdk-invocation-id", "amz-sdk-retry"));
 
   /** A fake remote signing endpoint for testing purposes. */
-  static final String S3_SIGNER_ENDPOINT = "v1/namespaces/ns1/tables/t1/sign/s3";
+  static final String S3_SIGNER_ENDPOINT = "v1/namespaces/ns1/tables/t1/sign";
 
   public S3SignerServlet() {
     super(S3_SIGNER_ENDPOINT);
