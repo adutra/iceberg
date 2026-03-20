@@ -177,4 +177,3 @@ Optional. Can be a single value or a comma-separated list of values.
 The logical name(s) of the target service where the client intends to use the requested token. This serves a purpose similar to the resource parameter but with the client providing a logical name for the target service.
 
 Optional. Can be a single value or a comma-separated list of values.
-
